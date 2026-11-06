@@ -111,6 +111,14 @@ export function makeItemMesh(kind: ItemKind): THREE.Group {
       g.add(box(0.02, 0.02, 0.12, M.copper, 0.06, 0.04, 0.36));
       g.add(box(0.02, 0.02, 0.12, M.copper, -0.06, 0.04, 0.36));
       break;
+    case 'bugzapper': {
+      g.add(box(0.4, 0.5, 0.4, M.dark, 0, 0.25, 0));
+      const grid = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.35, 0.42), new THREE.MeshStandardMaterial({ color: 0x3355ff, emissive: 0x000000, wireframe: true }));
+      grid.position.y = 0.3;
+      grid.name = 'bulb';
+      g.add(grid);
+      break;
+    }
     default:
       g.add(box(0.2, 0.2, 0.2, M.steel, 0, 0.1, 0));
   }

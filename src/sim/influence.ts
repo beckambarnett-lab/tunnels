@@ -74,6 +74,7 @@ export class Influence {
       const nearest = Math.min(...alive.filter((q) => q !== p).map((q) => Math.hypot(q.x - p.x, q.z - p.z)), 1e9);
       if (alive.length > 1 && nearest > 10) o += 1.5; // alone
       if (W.time - p.lastFired > 5) o += 0.5; // the flamethrower went quiet
+      if (W.voiceNoise && W.time - p.loudAt < 2) o += 1.5; // loud talking draws bugs
       this.opportunity[i] += o;
     }
     for (const wr of W.camp.wires)

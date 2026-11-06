@@ -26,6 +26,8 @@ export interface Pose {
   pitch: number;
   crouch: boolean;
   move: [number, number];
+  walkie?: boolean;
+  loud?: boolean;
 }
 
 /**
@@ -52,7 +54,7 @@ export class NetSession {
     t.onMessage = (from, msg) => this.message(from, msg);
     if (!t.isHost) {
       const hello = () => {
-        if (!this.welcomed) t.send({ t: 'hello' });
+        if (!this.welcomed) t.send({ t: 'hello', peerId: (t as any).peer?.id ?? '' });
       };
       hello();
       const iv = setInterval(() => (this.welcomed ? clearInterval(iv) : hello()), 700);
@@ -103,6 +105,7 @@ export class NetSession {
           w.events.emit('playerJoined', { id: from });
         }
         p.connected = true;
+        if (m.peerId) p.peerId = m.peerId;
         this.peers.add(from);
         this.t.send({ t: 'welcome', you: from, snap: fullSnapshot(w, this.pristine!) }, from);
       } else if (m.t === 'in') {
@@ -187,7 +190,11 @@ export class NetSession {
         p.pitch = pose.pitch;
         p.crouch = pose.crouch;
       }
-      if (pose) p.hiveMove = pose.move;
+      if (pose) {
+        p.hiveMove = pose.move;
+        p.walkieTalking = !!pose.walkie;
+        if (pose.loud) p.loudAt = w.time;
+      }
       const inp = this.inputs.get(p.id);
       if (inp && p.connected) {
         applyInput(w, p, inp, dt);

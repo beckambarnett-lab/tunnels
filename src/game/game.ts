@@ -20,6 +20,7 @@ import { newItem } from '../sim/camp';
 import type { Role } from '../sim/world';
 import { NetSession } from '../net/session';
 import { PlayerAvatars } from '../render/avatars';
+import { Voice } from '../net/voice';
 import { Panel } from '../debug/panel';
 
 export interface GameOptions {
@@ -58,6 +59,8 @@ export class Game {
   avatars: PlayerAvatars;
   session: NetSession | null = null;
   localId = 'local';
+  voice: Voice | null = null;
+  private called = new Set<string>();
   map = new WarMap();
   last = 0;
   time = 0;
@@ -124,6 +127,15 @@ export class Game {
     this.debug = new DebugViews(this.scene, this.world);
     this.camp = new CampMesh(this.scene, this.world, this.camera);
     this.avatars = new PlayerAvatars(this.scene, this.world, this.localId);
+    // proximity voice: online play only (WebRTC media); starts on the first click (mic permission)
+    if (this.session?.t.kind === 'webrtc') {
+      this.voice = new Voice();
+      const peer = (this.session.t as any).peer;
+      this.me.peerId = peer?.id ?? '';
+      canvas.addEventListener('mousedown', () => {
+        if (!this.voice!.ctx) this.voice!.start(peer, (pid) => this.world.players.find((p) => p.peerId === pid)?.id ?? null);
+      }, { once: true });
+    }
     if (opts.room) {
       const r = document.createElement('div');
       r.className = 'room';
@@ -183,7 +195,9 @@ export class Game {
     const w = this.world, p = this.me;
     p.slots = [newItem('flashlight'), newItem('flamethrower'), newItem('spool')];
     p.sel = 0;
-    const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper', 'lightning'];
+    const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper', 'lightning', 'walkie'];
+    // solo: nobody can electrocute you back to life, so you get a bug zapper (GDD)
+    if ((this.opts.role ?? 'solo') === 'solo') kit.push('bugzapper');
     const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), rx = -fz, rz = fx;
     kit.forEach((k, i) => {
       const along = 1.6 + Math.floor(i / 3) * 0.9, side = ((i % 3) - 1) * 0.9;
@@ -325,11 +339,23 @@ export class Game {
     this.ctrl.speedMul = me.carrying ? 0.6 : 1;
     const inp = this.buildInput(locked);
     const sess = this.session;
+    const walkie = this.input.down('KeyV');
+    const loud = this.voice ? this.voice.update(this.world, this.localId, walkie) : false;
+    if (this.voice?.enabled && sess) {
+      // call every other player once (lower id calls higher, so each pair connects once)
+      for (const p of this.world.players)
+        if (p.id !== this.localId && p.peerId && !this.called.has(p.id) && this.localId < p.id) {
+          this.called.add(p.id);
+          this.voice.call((sess.t as any).peer, p.peerId, p.id);
+        }
+    }
     if (sess && !sess.isHost) {
       // a client sends its input and pose; the host applies the actions
       const fx = Math.sin(me.yaw), fz = Math.cos(me.yaw);
-      sess.clientSend(inp, { x: me.x, z: me.z, yaw: me.yaw, pitch: me.pitch, crouch: me.crouch, move: this.hiveMove(fx, fz) });
+      sess.clientSend(inp, { x: me.x, z: me.z, yaw: me.yaw, pitch: me.pitch, crouch: me.crouch, move: this.hiveMove(fx, fz), walkie, loud });
     } else {
+      me.walkieTalking = walkie;
+      if (loud) me.loudAt = this.world.time;
       me.hiveMove = this.hiveMove(Math.sin(me.yaw), Math.cos(me.yaw));
       applyInput(this.world, me, inp, dt);
       sess?.hostApplyInputs(dt);
@@ -351,7 +377,7 @@ export class Game {
       this.lights.ambient.intensity = 0.9;
       this.scene.fog = null;
     } else {
-      this.lights.ambient.intensity = 0.06;
+      if (!this.me.hive) this.lights.ambient.intensity = 0.06;
       if (!this.scene.fog) this.scene.fog = new THREE.FogExp2(0x000000, 0.045);
     }
     if (this.shake > 0 && !top) {
@@ -374,7 +400,24 @@ export class Game {
     // terrain changes (digs, collapses) -> rebuild touched chunks
     const changed = w.grid.drainChanges();
     if (changed.length) this.terrain.onCellsChanged(changed);
-    this.bugs.update(w.swarm, this.time);
+    // respawn-ritual bodies: hive players' bugs massed into a human shape
+    const bodies = new Map<number, { x: number; z: number; shock: boolean }>();
+    let myMembers = 0;
+    for (const p of w.players) {
+      if (!p.hive) continue;
+      const t = [...w.tendrils.values()].find((x) => x.fieldName === 'hivep:' + p.id);
+      if (!t) continue;
+      if (p === this.me) myMembers = t.members;
+      if (p.ritualStage >= 1) bodies.set(t.id, { x: p.hiveX, z: p.hiveZ, shock: p.ritualStage >= 2 && p.ritual > 0 });
+    }
+    this.bugs.update(w.swarm, this.time, bodies);
+    this.hud.updateDeath(w, this.me, myMembers, w.light.rawAt(this.me.x, this.me.z));
+    if (this.me.hive) {
+      // the hive sees in the dark
+      this.lights.ambient.intensity = 1.1;
+      this.lights.ambient.color.setHex(0x9fb070);
+    } else this.lights.ambient.color.setHex(0x223040);
+    if (w.runState === 'failed' && this.input.hit('Enter')) location.reload();
     this.lights.update(w.allLights(), this.localId, this.camera.position, this.time);
     this.avatars.update(this.time);
     this.fx.update(dt, w.fire, this.time);

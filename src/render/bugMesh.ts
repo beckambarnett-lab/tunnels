@@ -52,7 +52,12 @@ export class BugMesh {
     this.mesh.setColorAt(0, this.colBase);
   }
 
-  update(sw: Swarm, time: number) {
+  /**
+   * `bodies`: tendrils whose bugs are massed into a human shape (respawn ritual). Render-only:
+   * those bugs are stacked into a 1.7 m figure around the group's centre.
+   */
+  update(sw: Swarm, time: number, bodies?: Map<number, { x: number; z: number; shock: boolean }>) {
+    const rank = new Map<number, number>();
     this.uniforms.uTime.value = time;
     const m = this.mesh.instanceMatrix.array as Float32Array;
     const ph = this.phase.array as Float32Array;
@@ -61,8 +66,23 @@ export class BugMesh {
     let k = 0;
     for (let i = 0; i < sw.count; i++) {
       if (!sw.alive[i] || sw.layer[i]) continue;
-      const h = sw.heading[i];
+      let h = sw.heading[i];
       const burning = sw.state[i] === BURN;
+      let bx = sw.x[i], by = sw.y[i], bz = sw.z[i];
+      const body = bodies?.get(sw.tendril[i]);
+      if (body) {
+        const r = rank.get(sw.tendril[i]) ?? 0;
+        rank.set(sw.tendril[i], r + 1);
+        const hgt = ((r * 0.6180339) % 1) * 1.75;
+        // a rough human silhouette: legs, torso, shoulders, head
+        const prof = hgt < 0.8 ? 0.16 : hgt < 1.35 ? 0.24 : hgt < 1.5 ? 0.3 : 0.13;
+        const a = r * 2.399 + time * (body.shock ? 9 : 0.6);
+        const twitch = body.shock ? Math.sin(time * 50 + r) * 0.05 : Math.sin(time * 3 + r) * 0.02;
+        bx = body.x + Math.cos(a) * (prof + twitch) + (hgt < 0.8 ? (r % 2 ? 0.12 : -0.12) : 0);
+        bz = body.z + Math.sin(a) * (prof + twitch);
+        by = hgt;
+        h = a;
+      }
       const s = burning ? 1.1 : 0.9 + (sw.phase[i] % 1) * 0.25;
       const c = Math.cos(h) * s, sn = Math.sin(h) * s;
       const o = k * 16;
@@ -78,9 +98,9 @@ export class BugMesh {
       m[o + 9] = 0;
       m[o + 10] = c;
       m[o + 11] = 0;
-      m[o + 12] = sw.x[i];
-      m[o + 13] = sw.y[i];
-      m[o + 14] = sw.z[i];
+      m[o + 12] = bx;
+      m[o + 13] = by;
+      m[o + 14] = bz;
       m[o + 15] = 1;
       ph[k] = sw.phase[i];
       spd[k] = burning ? 1 : Math.min(1, Math.hypot(sw.vx[i], sw.vz[i]) / 4);

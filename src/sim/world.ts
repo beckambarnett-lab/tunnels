@@ -59,6 +59,9 @@ export interface SimPlayer {
   hiveMove: [number, number]; // hive player's desired direction (world x/z)
   ritualStage: number; // 0 gathering, 1 body formed, 2 in the light (electrocute it!)
   order: string; // the queen's current order to a hive player
+  walkieTalking: boolean; // holding V with a walkie-talkie
+  loudAt: number; // last time their mic was loud (voice as noise)
+  peerId: string; // WebRTC peer id (voice calls)
 }
 
 export type RunState = 'playing' | 'failed' | 'won';
@@ -98,6 +101,7 @@ export class World {
   director: Director;
   death: Death;
   debugBreaches = true; // debug panel switch
+  voiceNoise = true; // GDD: loud talking registers on the queen's opportunity map (on by default)
   tendrils = new Map<number, Tendril>();
   players: SimPlayer[] = [];
   staticLights: LightSource[] = [];
@@ -179,6 +183,9 @@ export class World {
       hiveMove: [0, 0],
       ritualStage: 0,
       order: '',
+      walkieTalking: false,
+      loudAt: -100,
+      peerId: '',
     };
     this.players.push(p);
     return p;

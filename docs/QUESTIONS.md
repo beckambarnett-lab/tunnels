@@ -41,3 +41,16 @@ Not given. **Reading:** a full charge lasts 240 s of light; recharging at a runn
 GDD: belief "drops 0.02 each time a bug touches that light type and doesn't burn". A massed swarm jostling at a lamp's edge produces hundreds of touches a minute, which would break belief (to the 0.1 floor) in seconds and make every lamp useless almost at once.
 **Reading:** each bug can teach the lesson at most once every 3 s, and each light type can lose belief at most once every 2 s. Breaking belief fully (1.0 → 0.1, 45 drops) therefore takes at least ~90 s of sustained contact; probing scouts (and "Testing the light" once unlocked) are what keep it falling. Lightning kills within 5 m restore +0.05 each.
 
+## Q11. Solo play vs "if every player is in the hive, the run fails".
+A solo player who is devoured is, by definition, every player in the hive; but the GDD also gives solo players a bug zapper so they can do the respawn ritual alone.
+**Reading:** in solo, being devoured fails the run only if there's no powered bug zapper in the camp, or if the ritual isn't finished within 3 minutes. With two or more players, everyone in the hive at once fails immediately.
+
+## Q12. What happens to a devoured player's gear?
+Not specified. **Reading:** it drops on the floor where they were devoured (deep in the hive), so a bold team can go and get it back.
+
+## Q13. The hive player's "dim control over a group of bugs".
+**Reading:** you recruit up to 60 nearby bugs into your own group, and WASD (relative to where you look) steers it. The queen's order points at her current intent's goal; while you push against it your will drains, and as will falls your bugs drift toward her goal instead (with no will left, they go where she wants). Obeying refills will. Being in the light as a body also drains it.
+
+## Q14. Electrocuting the body "with the lightning gun or a live wire".
+**Reading:** a live (powered) cable with any point within 1.2 m of the body shocks it continuously; each lightning-gun hit on a body bug adds 2 s of the 10 s needed (and doesn't kill it); a powered solo bug zapper within 2 m shocks it at 6 fuel/s on top of the 150-fuel respawn cost. Fifteen or more queen-controlled bugs on the body reverse progress, and a big enough crowd breaks the body apart.
+

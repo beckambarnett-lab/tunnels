@@ -43,6 +43,42 @@ export class Hud {
     for (let i = 0; i < 90; i++) this.crawlers.push({ e: Math.floor(Math.random() * 4), t: Math.random(), s: 0.6 + Math.random() * 0.8, a: Math.random() * 6 });
   }
 
+  private hiveEl: HTMLElement | null = null;
+  private glare: HTMLElement | null = null;
+  private failEl: HTMLElement | null = null;
+  /** Downed / hive / failure screens. */
+  updateDeath(w: World, p: SimPlayer, members: number, lightAtEye: number) {
+    if (!this.hiveEl) {
+      this.hiveEl = document.createElement('div');
+      this.hiveEl.className = 'hivehud';
+      this.root.appendChild(this.hiveEl);
+      this.glare = document.createElement('div');
+      this.glare.className = 'glare';
+      this.root.appendChild(this.glare);
+      this.failEl = document.createElement('div');
+      this.failEl.className = 'fail';
+      this.root.appendChild(this.failEl);
+    }
+    this.glare!.style.opacity = p.hive ? String(Math.min(0.92, lightAtEye * 1.6)) : '0';
+    let html = '';
+    if (p.downed && !p.hive)
+      html = `<div class="big">OVERWHELMED</div><div>${p.carriedT > 0 ? `The swarm is carrying you to the queen… ${Math.max(0, 45 - p.carriedT).toFixed(0)} s` : 'Bugs are gathering on you'}</div><div>A teammate can scatter them and hold E on you to revive you${p.reviveT > 0 ? ` (${Math.round((p.reviveT / 3) * 100)}%)` : ''}</div>`;
+    else if (p.hive) {
+      const stage = p.ritualStage;
+      const step =
+        stage === 0
+          ? `1. Gather a body: ${members} / 60 bugs (move through the swarm)`
+          : stage === 1
+            ? '2. Force the body into the light (your bugs hate it: it drains your will)'
+            : `3. Hold it in the light — a live cable, the lightning gun or a bug zapper must shock it solid: ${Math.round(p.ritual * 100)}%`;
+      html = `<div class="order">THE QUEEN: ${p.order || '…'}</div><div class="will"><span>WILL</span><i style="width:${(p.will * 100).toFixed(0)}%"></i></div><div>${step}</div><div class="small">WASD steers your bugs. Pushing against her orders drains your will; with no will left, they go where she wants.</div>`;
+    }
+    this.hiveEl!.innerHTML = html;
+    this.hiveEl!.style.display = html ? 'block' : 'none';
+    this.failEl!.style.display = w.runState === 'failed' ? 'flex' : 'none';
+    if (w.runState === 'failed') this.failEl!.innerHTML = `<div class="big">THE NIGHT IS LOST</div><div>${w.failReason}</div><div class="small">Press Enter to start a new run</div>`;
+  }
+
   private pauseEl: HTMLElement | null = null;
   setPause(on: boolean, client: boolean) {
     if (!this.pauseEl) {
