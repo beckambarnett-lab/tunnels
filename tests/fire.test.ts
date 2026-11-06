@@ -51,3 +51,24 @@ describe('fire', () => {
     expect(w.grid.cells[hole]).toBe(1);
   });
 });
+
+describe('flares', () => {
+  it('a thrown flare is real fire for ~30 s: it lights, burns bugs that step on it, then goes out', async () => {
+    const { newItem } = await import('../src/sim/camp');
+    const { applyInput, emptyInput } = await import('../src/sim/actions');
+    const w = new World({ layout: asciiLayout(room(40, 20)), noQueen: true, bugs: -1 });
+    const p = w.addPlayer('p', 2, 5);
+    p.yaw = Math.PI / 2;
+    p.slots = [newItem('flare'), null, null];
+    applyInput(w, p, { ...emptyInput(), usePressed: true, use: true }, 1 / 20);
+    expect(p.slots[0]).toBeNull();
+    expect(w.flares.length).toBe(1);
+    const f = w.flares[0];
+    const j = w.swarm.spawn(f.x, f.z);
+    for (let s = 0; s < 40; s++) w.step(1 / 20);
+    expect(w.light.fire[w.grid.cellAt(f.x + 1, f.z)]).toBeGreaterThan(0.2);
+    expect(w.swarm.alive[j] === 0 || w.swarm.state[j] === BURN).toBe(true);
+    for (let s = 0; s < 20 * 31; s++) w.step(1 / 20);
+    expect(w.flares.length).toBe(0);
+  });
+});

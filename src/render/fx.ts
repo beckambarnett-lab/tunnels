@@ -154,6 +154,16 @@ export class Fx {
       col[k * 3 + 2] = 0.1;
       k++;
     }
+    // flares: a sputtering red point on the floor
+    for (const f of w.flares)
+      for (let m = 0; m < 4 && k < this.maxFire; m++, k++) {
+        pos[k * 3] = f.x + (Math.random() - 0.5) * 0.15;
+        pos[k * 3 + 1] = 0.12 + Math.random() * 0.25;
+        pos[k * 3 + 2] = f.z + (Math.random() - 0.5) * 0.15;
+        col[k * 3] = 1;
+        col[k * 3 + 1] = 0.15 + Math.random() * 0.2;
+        col[k * 3 + 2] = 0.1;
+      }
     // bug-sprayer mist: treated as serious gear, useless against the hive
     for (const p of w.players)
       if (p.spraying && k < this.maxFire - 8)

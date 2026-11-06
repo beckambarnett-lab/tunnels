@@ -238,7 +238,7 @@ export class Game {
     if (w.run) return this.giveNightKit();
     p.slots = [newItem('flashlight'), newItem('flamethrower'), newItem('spool')];
     p.sel = 0;
-    const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper', 'lightning', 'walkie'];
+    const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper', 'lightning', 'walkie', 'flare', 'flare'];
     // solo: nobody can electrocute you back to life, so you get a bug zapper (GDD)
     if ((this.opts.role ?? 'solo') === 'solo') kit.push('bugzapper');
     const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), rx = -fz, rz = fx;
@@ -266,6 +266,7 @@ export class Game {
       w.camp.drop(k, x, z);
     });
     for (const m of L.marks.filter((m) => m.kind === 'junk')) w.camp.drop(m.data.item, m.x, m.z);
+    for (const m of L.marks.filter((m) => m.kind === 'flare')) if (w.grid.isOpenAt(m.x, m.z)) w.camp.drop('flare', m.x, m.z);
     const lg = L.marks.find((m) => m.kind === 'lightning');
     if (lg) w.camp.drop('lightning', lg.x, lg.z);
     p.yaw = Math.PI / 2;

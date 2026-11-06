@@ -216,6 +216,12 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
       case 'sprayer':
         if (inp.use) p.spraying = true;
         break;
+      case 'flare':
+        if (inp.usePressed) {
+          w.throwFlare(p);
+          p.slots[p.sel] = null;
+        }
+        break;
       case 'lightning':
         if (inp.usePressed && w.time - p.zapT > 0.6 && w.fuel.has(FUEL.lightningPerShot)) {
           p.zapT = w.time;

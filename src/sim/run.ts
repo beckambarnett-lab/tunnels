@@ -29,6 +29,7 @@ export class Run {
   log: string[] = [];
   radio: { t: number; text: string }[] = [];
   onCheckpoint: (name: string) => void = () => {};
+  private lastFlareRelax = -1;
 
   constructor(public w: World, public L: NightLayout) {
     for (const m of L.marks.filter((m) => m.kind === 'houselamp')) {
@@ -204,6 +205,22 @@ export class Run {
         }
       }
     this.pickPocket();
+    // director lever (GDD): where scavengeable flares appear: one ahead of a struggling team per Relax
+    const d = w.director;
+    if (d.state === 'Relax' && this.lastFlareRelax !== d.since && (w.fuel.value < 600 || d.team > 0.6)) {
+      this.lastFlareRelax = d.since;
+      const lead = alive.reduce((a, p) => (p.x > (a?.x ?? -1) ? p : a), null as SimPlayer | null);
+      if (lead) {
+        for (let k = 8; k < 16; k += 0.5) {
+          const x = lead.x + k, z = lead.z;
+          if (w.grid.isOpenAt(x, z)) {
+            w.camp.drop('flare', x, z);
+            this.note('director: a flare appears ahead of a struggling team');
+            break;
+          }
+        }
+      }
+    }
     // act 1 runs a small swarm
     if (w.authority && w.targetBugs >= 0) w.targetBugs = this.act === 1 ? Math.min(w.targetBugs, 80) : Math.max(w.targetBugs, this.act >= 3 ? 600 : 300);
   }

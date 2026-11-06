@@ -111,6 +111,10 @@ export function makeItemMesh(kind: ItemKind): THREE.Group {
       g.add(box(0.02, 0.02, 0.12, M.copper, 0.06, 0.04, 0.36));
       g.add(box(0.02, 0.02, 0.12, M.copper, -0.06, 0.04, 0.36));
       break;
+    case 'flare':
+      g.add(cyl(0.025, 0.22, M.red, 0, 0.03, 0, 6));
+      g.children[0].rotation.x = Math.PI / 2;
+      break;
     case 'bugzapper': {
       g.add(box(0.4, 0.5, 0.4, M.dark, 0, 0.25, 0));
       const grid = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.35, 0.42), new THREE.MeshStandardMaterial({ color: 0x3355ff, emissive: 0x000000, wireframe: true }));

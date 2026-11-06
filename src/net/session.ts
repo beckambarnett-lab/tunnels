@@ -174,6 +174,7 @@ export class NetSession {
         w.runState = m.runState;
         w.failReason = m.failReason;
         applyRunState(w, m.run);
+        w.syncFlares(m.flares ?? []);
         break;
       case 'ev':
         w.events.emit(m.name, m.data);
@@ -249,6 +250,7 @@ export class NetSession {
         runState: w.runState,
         failReason: w.failReason,
         run: runState(w),
+        flares: w.flares.map((f) => [f.x, f.z, f.t]),
       });
     // swarm keyframes: a quarter of the slots per message, 16 messages a second = every bug 4x/s
     a.kf += dt;

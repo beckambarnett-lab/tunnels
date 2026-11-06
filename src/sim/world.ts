@@ -119,6 +119,8 @@ export class World {
   tendrils = new Map<number, Tendril>();
   players: SimPlayer[] = [];
   staticLights: LightSource[] = [];
+  /** thrown flares: real fire for ~30 s (GDD) */
+  flares: { x: number; z: number; t: number; light: LightSource }[] = [];
   burnLights: LightSource[] = [];
   time = 0;
   targetBugs: number;
@@ -231,6 +233,7 @@ export class World {
     }
     for (const l of this.staticLights) out.push(l);
     this.camp.lights(out);
+    for (const f of this.flares) out.push(f.light);
     // burning bugs are fire too (they light up and repel their neighbours)
     const sw = this.swarm;
     let k = 0;
@@ -324,6 +327,16 @@ export class World {
     }
     this.fire.step(dt, this);
     this.timings.fire = T(t);
+    // flares burn out; anything that steps onto one catches fire
+    for (const f of this.flares) {
+      f.t -= dt;
+      f.light.intensity = f.t < 3 ? 1.4 * (f.t / 3) : 1.4 * (0.9 + 0.1 * Math.sin(this.time * 23));
+      const sw = this.swarm;
+      sw.hash.forEachNear(f.x, f.z, 0.7, (j) => {
+        if (sw.alive[j] && !sw.layer[j] && (sw.x[j] - f.x) ** 2 + (sw.z[j] - f.z) ** 2 < 0.49) sw.ignite(j);
+      });
+    }
+    this.flares = this.flares.filter((f) => f.t > 0);
     if (this.authority) {
       this.run?.step(dt);
       this.finale?.step(dt);
@@ -368,6 +381,24 @@ export class World {
   }
 
   /** Goal nodes for a world point: its cell plus open neighbours (robust to standing on an edge). */
+  /** Clients mirror the host's flares. */
+  syncFlares(list: [number, number, number][]) {
+    this.flares = list.map(([x, z, t], k) => {
+      const old = this.flares[k];
+      if (old && Math.abs(old.x - x) < 0.01 && Math.abs(old.z - z) < 0.01) return { ...old, t };
+      return { x, z, t, light: makeLight('flare', { x, z, y: 0.2, radius: 6, intensity: 1.4 }) };
+    });
+  }
+
+  throwFlare(p: SimPlayer) {
+    const dx = Math.sin(p.yaw), dz = Math.cos(p.yaw);
+    let d = 0.5;
+    while (d < 7 && this.grid.isOpenAt(p.x + dx * (d + 0.25), p.z + dz * (d + 0.25))) d += 0.25;
+    const x = p.x + dx * d, z = p.z + dz * d;
+    this.flares.push({ x, z, t: 30, light: makeLight('flare', { x, z, y: 0.2, radius: 6, intensity: 1.4 }) });
+    this.events.emit('flare', { x, z });
+  }
+
   goalCellsAt(x: number, z: number, r = 1): number[] {
     const g = this.grid;
     const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
