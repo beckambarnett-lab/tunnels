@@ -117,7 +117,7 @@ Q5–Q9 in `docs/QUESTIONS.md`: port counts (generator 2 outputs), only the held
 1. Open two browser tabs. In one: *Host (tabs on this machine)*; note the room code bottom-right. In the other: type the code, *Join (this machine)*.
 2. Walk both players around; check the swarm, digs, cables and fuel match in both tabs (overlay shows `bug err` on the client).
 3. Let one player get overwhelmed in the dark (god mode off). The other should see carriers drag them toward the hive; burn the carriers and hold E on them to revive.
-4. Let the carry finish. The devoured tab switches to swarm vision with the queen's order on screen. Steer the bugs (WASD) back to a lit spot next to a live cable (or zap the body with the lightning gun) until they're rebuilt.
+4. Let the carry finish. The devoured tab switches to swarm vision with the queen's order on screen. Steer the bugs (WASD) back to a lit spot next to a live cable (or zap the body with the lightning gun) until they're rebuilt. It's a team job: the living player has to keep the camp lit and burn or zap the queen's bugs off the body, and the hive player has to stop pushing (obey) when will runs low, then push again. That's how the automated gate passes; tell me if it feels too hard or too easy.
 5. Online: *Host online* / *Join online* on two machines (needs WebRTC to 0.peerjs.com). Click once to grant the mic: proximity voice, V for the walkie-talkie (carry one).
 
 ### Decisions where the GDD was open
@@ -127,7 +127,7 @@ Q2 (sync = local steering + keyframes), Q11 (solo hive failure), Q12 (gear drops
 - Voice and the PeerJS transport could not be tested in the build container (no microphone, no outbound WebRTC). The code is defensive: any failure just disables voice.
 - The gate's "four friends finish two acts" was replaced by your two-tab, 10-minute stand-in.
 
-## Milestone 5 — The full night (vertical slice, no gate tag yet; see PROGRESS)
+## Milestone 5 — The full night (vertical slice; tag `milestone-5-slice`)
 
 ### What was built
 - **The night layout**: the hand-drawn house (act 1) with its basement plug, then the base, procedural nest with side loops, the intersection, an oil rig, the deep nest, the junkyard and the queen's chamber, stitched along one main path.

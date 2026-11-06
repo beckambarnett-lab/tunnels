@@ -6,7 +6,8 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - Milestone 1 (swarm prototype): **done, gate passed, tagged `milestone-1`**
 - Milestone 2 (the moving camp): **done, gate passed, tagged `milestone-2`**
 - Milestone 3 (queen and director): **done, gate passed, tagged `milestone-3`**
-- Current: Milestone 4 (multiplayer and the hive): all tasks built; gate run in progress (task 4.10)
+- Milestone 4 (multiplayer and the hive): **done, gate passed, tagged `milestone-4`**
+- Milestone 5 (the full night): vertical slice built; full-night browser run passes (see Gate results)
 
 ## Done
 ### Milestone 1
@@ -49,7 +50,7 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - Devices can be damaged and broken (siege, generator sabotage); hold R to repair.
 - Debug panel: "force intent" selector.
 
-### Milestone 4 (built; gate pending)
+### Milestone 4
 - 4.1 Transports: BroadcastChannel (same-machine tabs), PeerJS/WebRTC (online, untested here), in-memory (tests). Title lobby + `?host=CODE` / `?join=CODE&net=local|webrtc`.
 - 4.2 Snapshot on join (terrain diff incl. every dug cell, camp, players, tendrils, swarm, fuel, belief); players at 20 Hz; tendrils 4 Hz; camp on change; terrain changes as they happen; misc 5 Hz; relayed tell/breach/fx events.
 - 4.3 Swarm sync: clients steer bugs locally from synced tendrils and fields; host keyframes cover every bug 4×/s, quantised, soft-corrected (snap if >1.5 m).
@@ -58,7 +59,7 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - 4.6 Downed → carrier group walks you to the queen (~45 s) → teammates scatter carriers and hold E to revive.
 - 4.7 Devoured → hive player: steer ~60 bugs, queen's orders, will meter, swarm vision with light glare.
 - 4.8 Respawn ritual: body of 60 → into the light → electrocuted ~10 s (live cable / lightning hits / solo bug zapper) → back at low health, −150 fuel; the queen sends a tendril to break it up. Everyone in the hive = run fails (solo: unless a powered bug zapper exists, 3 min limit).
-- 4.9 Pause: Esc/P, host pauses everyone. (Save/load snapshot not done yet.)
+- 4.9 Pause: Esc/P, host pauses everyone. Save/load: K saves to the browser, Shift+K exports a file, `?load` continues (marks the run).
 
 ### Milestone 5 (vertical slice, built)
 - 5.1 Night layout (`src/sim/night.ts`): house → base → nest → intersection → nest → oil rig → deep nest → junkyard → queen's chamber, side loops; zones + marks + swarm pockets. Test: `tests/night.test.ts`.
@@ -70,7 +71,9 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - 5.7 Art/audio pass: zone palettes, jingle, radio static, sunrise chord. (No real dusk/sunrise lighting yet.)
 
 ## In progress
-- 4.10 gate: `scripts/gate4.mjs` (run against a frozen build: `npx vite build --outDir dist-gate && npx vite preview --outDir dist-gate --port 4174`, then `BASE=http://localhost:4174/ node scripts/gate4.mjs`).
+- (none)
+
+How to run the browser gates without the dev server reloading them: `npx vite build --outDir dist-gate && npx vite preview --outDir dist-gate --port 4174`, then `BASE=http://localhost:4174/ node scripts/gateN.mjs`.
 
 ## Next
 - M4: transport (BroadcastChannel + PeerJS), lobby, host/join, world snapshot, player sync, swarm sync (local sim + host keyframes), dig/camp/fuel events, carrying + revive, hive player + respawn ritual, pause.
@@ -84,6 +87,29 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - Floor eruptions are frequent: undermining tendrils dive under lit ground and come up in the dark behind you. Breaches count once per hole (10 s window).
 
 ## Gate results
+
+### Milestone 5 — full night, vertical slice (self-check; no gate was set for M5)
+GDD gate: "a full night plays from dusk to sunrise". Stand-in: `scripts/night.mjs` drives a solo night in the browser through the game's own systems (teleporting between set pieces instead of walking), plus `tests/run.test.ts` and `tests/night.test.ts` in Node.
+| Beat | Result |
+| --- | --- |
+| Act 1: job done + flashlight → power dies → basement opens | yes (checkpoint: flashlights) |
+| Act 2 at the base, act 3 past the intersection, act 4 in the junkyard | yes; director act follows |
+| Fuel tank → flamethrower; oil rig +350; Enlite suit | yes (checkpoints: intersection, oil rig 1, junkyard, suits) |
+| Burn 5 egg sacs → queen provoked | rage 100% |
+| Truck → sunrise → queen dies → true ending screen | yes; truck at 37% hp at worst; 0 console errors |
+| Continued from a checkpoint → hollow ending; truck stopped → run fails | Node tests |
+
+### Milestone 4 — PASSED (2026-11-06)
+Browser: `scripts/gate4.mjs` (two tabs on one machine over BroadcastChannel, seed 3, 500 bugs), run against a frozen build. Node: `tests/net.test.ts`, `tests/death.test.ts`, `tests/gate4-repro.test.ts`.
+| Check | Result |
+| --- | --- |
+| Host, join, see the same swarm | 500/500 bugs compared every 30 s: mean position difference between the two tabs 0.04 m average, 0.09 m worst; 0 alive/dead mismatches |
+| Stay in sync for 10 minutes | 20 samples over 602 s wall-clock (168 s of game time: headless tabs run at ~5 fps): terrain identical every sample (20 dug cells by the end), fuel identical, both tabs see 2 players and the same devices. Node: 10 simulated minutes, mean error ≤ 0.16 m, 0 mismatches, 0 terrain differences |
+| Hive death | joined player downed in the dark → carried (`carried` event) → devoured after 56 s; the client tab switches to swarm vision with the queen's order |
+| Respawn | the client steers its body (60 bugs) to a lit live cable while the host keeps the camp lit and zaps the queen's breakers; shocked to 100%; back in 116 s game time at 0.6 overwhelm; respawn fuel spent: 150 |
+| No console errors | 0 |
+
+Issues found and fixed on the way to passing: a downed player's flashlight kept shining (drove carriers off); carriers far from standing players ran at quarter-rate LOD; a god-mode player could still be downed within one step; hive steering aimed into walls; zero will made the ritual impossible during Relax (you now keep a quarter of the control, and the queen's pull is suspended while the body is being shocked). Gate-script fixes: lamp placement, dark-spot search, team play (keep the camp lit, defend the body, rest when will is low).
 
 ### Milestone 3 — PASSED (2026-11-06)
 | Check | How | Result |
