@@ -65,3 +65,4 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 body.freemouse, body.freemouse canvas#game { cursor: crosshair; }
 #hud .hint { left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 80vw); line-height: 1.5; }
 #hud .hint:not(:empty) { background: rgba(0, 0, 0, 0.62); padding: 8px 12px; border-radius: 4px; color: #ddd; }
+#menu .hint a { color: #c9a227; }
