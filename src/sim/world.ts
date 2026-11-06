@@ -67,6 +67,7 @@ export interface SimPlayer {
   peerId: string; // WebRTC peer id (voice calls)
   suit: boolean; // wearing an Enlite suit (faster, bigger flame, can dig)
   riding: boolean; // in the digging truck (finale)
+  hose?: boolean; // garden hose taped on: longer, weaker flame
   digT: number;
 }
 
@@ -315,7 +316,8 @@ export class World {
     for (const p of this.players) {
       if (!p.firing || !p.alive || p.downed || p.hive) continue;
       const [ax, ay, az] = p.aim, [ex, ey, ez] = p.eye;
-      this.fire.emit(ex + ax * 0.5, ey - 0.35, ez + az * 0.5, ax, ay, az, dt, p.suit ? 1.4 : 1); // suits: larger flame
+      // suits: larger flame; a taped-on garden hose reaches further but sprays thinner
+      this.fire.emit(ex + ax * 0.5, ey - 0.35, ez + az * 0.5, ax, ay, az, p.hose ? dt * 0.55 : dt, (p.suit ? 1.4 : 1) * (p.hose ? 1.35 : 1));
     }
     this.fire.step(dt, this);
     this.timings.fire = T(t);

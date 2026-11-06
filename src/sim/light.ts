@@ -1,11 +1,11 @@
 import { CELL } from '../config';
 import { Grid, OPEN } from './grid';
 
-export type LightKind = 'fire' | 'burn' | 'flare' | 'flashlight' | 'lamp' | 'floodlight' | 'motion';
+export type LightKind = 'fire' | 'burn' | 'flare' | 'flashlight' | 'lamp' | 'floodlight' | 'motion' | 'xmas';
 export const ELECTRIC: LightKind[] = ['flashlight', 'lamp', 'floodlight', 'motion'];
 /** index into LightMap.kindAt (0 = no electric light) */
-export const ELECTRIC_INDEX: Record<string, number> = { flashlight: 1, lamp: 2, floodlight: 3, motion: 4 };
-export const isElectric = (k: LightKind) => k === 'flashlight' || k === 'lamp' || k === 'floodlight' || k === 'motion';
+export const ELECTRIC_INDEX: Record<string, number> = { flashlight: 1, lamp: 2, floodlight: 3, motion: 4, xmas: 5 };
+export const isElectric = (k: LightKind) => k === 'flashlight' || k === 'lamp' || k === 'floodlight' || k === 'motion' || k === 'xmas';
 
 export interface LightSource {
   id: number;
@@ -52,7 +52,7 @@ export class LightMap {
   kindAt: Uint8Array; // dominant electric light type per cell (ELECTRIC_INDEX)
   private elecMax: Float32Array;
   version = 0;
-  belief: Record<string, number> = { flashlight: 1, lamp: 1, floodlight: 1, motion: 1 };
+  belief: Record<string, number> = { flashlight: 1, lamp: 1, floodlight: 1, motion: 1, xmas: 1 };
   constructor(public grid: Grid) {
     this.raw = new Float32Array(grid.n);
     this.eff = new Float32Array(grid.n);

@@ -114,7 +114,7 @@ export class Run {
       w.fuel.add(m.data?.fuel ?? 300, 'oilRig');
       w.events.emit('rig', { x: m.x, z: m.z, fuel: m.data?.fuel });
       this.note(`oil rig: +${m.data?.fuel} fuel`);
-      this.checkpoint('oil rig ' + this.used.size);
+      this.checkpoint('oil rig ' + [...this.used].filter((u) => u.startsWith('rig@')).length);
     } else if (m.kind === 'tank') {
       // strap a big tank onto your sprayer: it becomes a flamethrower (real fire arrives)
       const k2 = p.slots.findIndex((s) => s?.kind === 'sprayer');

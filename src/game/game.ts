@@ -257,6 +257,7 @@ export class Game {
       if (!w.grid.isOpenAt(x, z)) (x = p.x + 1), (z = p.z);
       w.camp.drop(k, x, z);
     });
+    for (const m of L.marks.filter((m) => m.kind === 'junk')) w.camp.drop(m.data.item, m.x, m.z);
     const lg = L.marks.find((m) => m.kind === 'lightning');
     if (lg) w.camp.drop('lightning', lg.x, lg.z);
     p.yaw = Math.PI / 2;

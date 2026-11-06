@@ -160,3 +160,33 @@ describe('the full night (vertical slice)', () => {
     }
   }, 60000);
 });
+
+describe('junk mods', () => {
+  it('a hubcap widens the flashlight and drains it faster; a hose lengthens the flame; Christmas lights lose belief fast', () => {
+    const w = new World({ seed: 2, night: true, bugs: -1 });
+    const p = w.addPlayer('local', 10, 10);
+    const orig = console.log;
+    console.log = () => {};
+    try {
+      p.slots = [newItem('flashlight'), newItem('flamethrower'), null];
+      p.sel = 0;
+      w.camp.drop('hubcap', p.x, p.z);
+      expect(w.camp.pickUpFloor(p, w.camp.floor[w.camp.floor.length - 1])).toBe(true);
+      expect(p.slots[0]!.mods).toContain('hubcap');
+      const b0 = p.slots[0]!.battery!;
+      applyInput(w, p, emptyInput(), 1);
+      expect(b0 - p.slots[0]!.battery!).toBeCloseTo(1.6, 5);
+      expect(p.flashlight.cone).toBeGreaterThan((30 * Math.PI) / 180);
+      p.sel = 1;
+      w.camp.drop('hose', p.x, p.z);
+      w.camp.pickUpFloor(p, w.camp.floor[w.camp.floor.length - 1]);
+      applyInput(w, p, emptyInput(), 1 / 20);
+      expect(p.hose).toBe(true);
+      const before = w.light.belief.xmas;
+      w.learning.touch(0, 5);
+      expect(before - w.light.belief.xmas).toBeCloseTo(0.06, 5);
+    } finally {
+      console.log = orig;
+    }
+  });
+});

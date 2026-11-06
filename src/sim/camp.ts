@@ -17,7 +17,13 @@ export type ItemKind =
   | 'flare'
   | 'walkie'
   | 'lightning'
-  | 'bugzapper';
+  | 'bugzapper'
+  | 'hubcap'
+  | 'hose'
+  | 'xmas';
+
+/** Junk mods (GDD): house items the hive dragged into the nest, taped onto gear for a tradeoff. */
+export const JUNK: ItemKind[] = ['hubcap', 'hose', 'xmas'];
 
 export const ITEM_NAMES: Record<ItemKind, string> = {
   flashlight: 'Flashlight',
@@ -34,22 +40,26 @@ export const ITEM_NAMES: Record<ItemKind, string> = {
   walkie: 'Walkie-talkie',
   lightning: 'Lightning gun',
   bugzapper: 'Bug zapper',
+  hubcap: 'Hubcap (junk)',
+  hose: 'Garden hose (junk)',
+  xmas: 'Christmas lights',
 };
 
-export const PLACEABLE: ItemKind[] = ['generator', 'lamp', 'floodlight', 'motion', 'splitter', 'bugzapper'];
+export const PLACEABLE: ItemKind[] = ['generator', 'lamp', 'floodlight', 'motion', 'splitter', 'bugzapper', 'xmas'];
 
 export interface Item {
   id: number;
   kind: ItemKind;
   battery?: number; // flashlight seconds left
   on?: boolean; // flashlight switch
+  mods?: string[]; // junk taped on
 }
 export interface FloorItem {
   item: Item;
   x: number;
   z: number;
 }
-export type DeviceKind = 'generator' | 'lamp' | 'floodlight' | 'motion' | 'splitter' | 'bugzapper';
+export type DeviceKind = 'generator' | 'lamp' | 'floodlight' | 'motion' | 'splitter' | 'bugzapper' | 'xmas';
 export interface Device {
   id: number;
   kind: DeviceKind;
@@ -91,6 +101,7 @@ const PORTS: Record<DeviceKind, { in: number; out: number }> = {
   motion: { in: 1, out: 1 },
   splitter: { in: 1, out: 2 },
   bugzapper: { in: 1, out: 0 },
+  xmas: { in: 1, out: 1 },
 };
 
 let nextId = 1;
@@ -148,6 +159,16 @@ export class Camp {
     return true;
   }
   pickUpFloor(p: SimPlayer, fi: FloorItem): boolean {
+    // junk is taped straight onto the held gear when it fits (a small change with a tradeoff)
+    const held = this.held(p);
+    const tape = (fi.item.kind === 'hubcap' && held?.kind === 'flashlight') || (fi.item.kind === 'hose' && (held?.kind === 'sprayer' || held?.kind === 'flamethrower'));
+    if (tape && held) {
+      held.mods = [...(held.mods ?? []), fi.item.kind];
+      this.floor.splice(this.floor.indexOf(fi), 1);
+      this.version++;
+      this.w.events.emit('junkMod', { id: p.id, mod: fi.item.kind, on: held.kind });
+      return true;
+    }
     if (fi.item.kind === 'generator') {
       if (!this.allSlotsFree(p)) return false;
       p.carrying = fi.item;
@@ -194,6 +215,7 @@ export class Camp {
     if (kind === 'lamp') dev.light = makeLight('lamp', { x, z, y: 1.1, radius: 5, intensity: 1, on: false, owner: 'dev' + id });
     if (kind === 'floodlight') dev.light = makeLight('floodlight', { x, z, y: 1.7, radius: 13, cone: (32 * Math.PI) / 180, intensity: 1.4, dirX: fx, dirZ: fz, on: false, owner: 'dev' + id });
     if (kind === 'motion') dev.light = makeLight('motion', { x, z, y: 1.0, radius: 4.5, intensity: 1, on: false, owner: 'dev' + id });
+    if (kind === 'xmas') dev.light = makeLight('xmas' as any, { x, z, y: 0.8, radius: 3.2, intensity: 0.55, on: false, owner: 'dev' + id });
     if (kind === 'bugzapper') dev.light = makeLight('lamp', { x, z, y: 0.9, radius: 2, intensity: 0.5, on: false, owner: 'dev' + id });
     if (kind === 'generator') {
       dev.running = true; // set down = started; E toggles
@@ -512,7 +534,7 @@ export class Camp {
         continue;
       }
       d.light.on = d.powered && !d.broken;
-      if (d.powered && !d.broken) w.fuel.drain((d.kind === 'lamp' ? FUEL.lampPerMin : d.kind === 'floodlight' ? FUEL.floodlightPerMin : 0) * perMin, d.kind, w.time);
+      if (d.powered && !d.broken) w.fuel.drain((d.kind === 'lamp' ? FUEL.lampPerMin : d.kind === 'floodlight' ? FUEL.floodlightPerMin : d.kind === 'xmas' ? FUEL.lampPerMin * 0.3 : 0) * perMin, d.kind, w.time);
     }
     for (const p of w.players) if (p.layingWire != null) this.payOut(p);
     this.chewT -= dt;

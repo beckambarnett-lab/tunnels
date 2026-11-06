@@ -98,13 +98,14 @@ export class Learning {
   touch(i: number, kindIndex: number) {
     const t = this.w.time;
     if (t - this.lastTouch[i] < BELIEF.touchCooldown) return;
-    const kind = ['', 'flashlight', 'lamp', 'floodlight', 'motion'][kindIndex];
+    const kind = ['', 'flashlight', 'lamp', 'floodlight', 'motion', 'xmas'][kindIndex];
     // one lesson per light type every couple of seconds: a jostling crowd isn't 200 lessons
     if (t - (this.lastTypeTouch[kind] ?? -100) < BELIEF.typeCooldown) return;
     this.lastTypeTouch[kind] = t;
     this.lastTouch[i] = t;
     const b = this.w.light.belief;
-    b[kind] = Math.max(BELIEF.floor, (b[kind] ?? 1) - BELIEF.touchDrop);
+    // the queen sees through cheap Christmas lights quickly
+    b[kind] = Math.max(BELIEF.floor, (b[kind] ?? 1) - BELIEF.touchDrop * (kind === 'xmas' ? 3 : 1));
     this.habits.touchLight++;
     this.w.events.emit('beliefDrop', { kind, belief: b[kind] });
   }

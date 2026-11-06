@@ -237,6 +237,8 @@ export function generateNight(seed: number): NightLayout {
         else carveOp(grid, ox, oy, op, c.rot, true);
       }
       if (c.def.tags?.includes('deadend') || gy !== mainRow) pockets.push({ ...at(gx, gy, C, C), cells: [] });
+      // junk the hive dragged down from the house lies off the safe path
+      if (gy !== mainRow) marks.push({ kind: 'junk', ...at(gx, gy, C, C), data: { item: rng.pick(['hubcap', 'hose', 'xmas']) } });
     }
   for (const pl of pillars) carveOp(grid, pl.ox, pl.oy, pl.op, pl.rot, false);
   // organic edges everywhere except the house

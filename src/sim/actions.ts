@@ -94,7 +94,10 @@ export function promptFor(w: World, p: SimPlayer, t: Target | null): string {
   const cut = c.nearestCut(p);
   if (cut) lines.push(`Hold R: repair cut cable${p.repairT > 0 ? ` (${Math.round((p.repairT / CAMP.repairTime) * 100)}%)` : ''}`);
   if (t) {
-    if (t.kind === 'floor') lines.push(`E: pick up ${ITEM_NAMES[t.fi.item.kind]}${t.fi.item.kind === 'generator' && !c.allSlotsFree(p) ? ' (needs all 3 slots empty)' : ''}`);
+    const hk = held?.kind;
+    if (t.kind === 'floor' && ((t.fi.item.kind === 'hubcap' && hk === 'flashlight') || (t.fi.item.kind === 'hose' && (hk === 'sprayer' || hk === 'flamethrower'))))
+      lines.push(`E: tape the ${t.fi.item.kind === 'hubcap' ? 'hubcap onto your flashlight (wider beam, drains faster)' : 'garden hose onto your ' + ITEM_NAMES[hk!] + ' (longer reach, weaker)'}`);
+    else if (t.kind === 'floor') lines.push(`E: pick up ${ITEM_NAMES[t.fi.item.kind]}${t.fi.item.kind === 'generator' && !c.allSlotsFree(p) ? ' (needs all 3 slots empty)' : ''}`);
     if (t.kind === 'mark') {
       const m = t.m;
       if (m.kind === 'rig') lines.push(`E: tap the oil rig (+${m.data?.fuel ?? 300} fuel)`);
@@ -203,6 +206,7 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
         if (inp.usePressed) held.on = !held.on;
         break;
       case 'flamethrower':
+        p.hose = !!held.mods?.includes('hose');
         if (inp.use && w.fuel.has(0.01)) {
           p.firing = true; // the world emits the flames (on every machine) from p.aim / p.eye
           w.fuel.drain(FUEL.flamethrowerPerSec * dt, 'flamethrower', w.time);
@@ -259,8 +263,10 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
   const fl = c.held(p);
   const lit = !!fl && fl.kind === 'flashlight' && fl.on !== false && (fl.battery ?? 0) > 0;
   p.flashlight.on = lit;
+  const hub = !!fl?.mods?.includes('hubcap');
+  p.flashlight.cone = ((hub ? 36 : 24) * Math.PI) / 180; // hubcap reflector: a wider beam...
   if (lit) {
-    fl!.battery = Math.max(0, (fl!.battery ?? 0) - dt);
+    fl!.battery = Math.max(0, (fl!.battery ?? 0) - dt * (hub ? 1.6 : 1)); // ...that drains faster
     // weak battery: dimmer and flickering
     const b = fl!.battery! / CAMP.flashlightBattery;
     p.flashlight.intensity = b > 0.15 ? 1.25 : 0.5 + b * 5 * (Math.sin(w.time * 37) > -0.6 ? 1 : 0.2);
