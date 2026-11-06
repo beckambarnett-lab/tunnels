@@ -191,9 +191,18 @@ export class Death {
     if (st >= 1 && lit > DEATH.ritualLight * 0.5) p.will -= DEATH.willDrainLight * dt; // the bugs hate the light
     p.will = Math.max(0, Math.min(1, p.will));
     // steer toward the last open point along your direction (never a goal inside a wall)
-    let reach = 0;
-    while (reach < 3 && w.grid.isOpenAt(p.hiveX + mx * (reach + 0.25), p.hiveZ + mz * (reach + 0.25))) reach += 0.25;
-    const px = p.hiveX + mx * reach, pz = p.hiveZ + mz * reach;
+    // (if the straight line is blocked, slide along the wall: try nearby angles)
+    let px = p.hiveX, pz = p.hiveZ, bestReach = -1;
+    if (moving)
+      for (const da of [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2]) {
+        const ca = Math.cos(da), sa = Math.sin(da);
+        const dx = mx * ca - mz * sa, dz = mx * sa + mz * ca;
+        let reach = 0;
+        while (reach < 3 && w.grid.isOpenAt(p.hiveX + dx * (reach + 0.25), p.hiveZ + dz * (reach + 0.25))) reach += 0.25;
+        const score = reach - Math.abs(da) * 0.8;
+        if (score > bestReach) (bestReach = score), (px = p.hiveX + dx * reach), (pz = p.hiveZ + dz * reach);
+        if (reach >= 2.5 && da === 0) break;
+      }
     // as will falls your bugs drift toward her goal; you always keep a little dim control
     const k = 0.75 * (1 - p.will);
     t.gx = px * (1 - k) + o.x * k;

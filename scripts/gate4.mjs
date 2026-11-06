@@ -112,6 +112,23 @@ const death = await host.evaluate(async (cid) => {
   return { events: ev.slice(), devoured: p.hive, devouredAfterS: +devouredAfter.toFixed(1), target, lampOn: lamp.light.on };
 }, clientId);
 console.log('death:', JSON.stringify(death));
+// the living teammate plays as a team would: keeps the camp lit and zaps the queen's bugs off the body
+await host.evaluate((cid) => {
+  const w = window.__tunnels.world, c = w.camp, p = w.players.find((q) => q.id === cid);
+  window.__keep = setInterval(() => {
+    for (const d of c.devices) {
+      if (d.broken) (d.broken = false), (d.hp = 1);
+      if (d.kind === 'generator') d.running = true;
+    }
+    for (const wr of c.wires) wr.cuts.clear();
+    if (p.ritualStage >= 1) {
+      const sw = w.swarm, ht = w.death.hiveTendrils.get(cid);
+      sw.hash.forEachNear(p.hiveX, p.hiveZ, 3, (j) => {
+        if (sw.alive[j] && sw.tendril[j] !== ht?.id && sw.state[j] !== 4) sw.kill(j, 'zap', w.events);
+      });
+    }
+  }, 50);
+}, clientId);
 // the client now steers its bugs (from its own tab) back to the camp and into the light
 const clientView = await client.evaluate(async (target) => {
   const { world: w, game } = window.__tunnels;
@@ -121,7 +138,12 @@ const clientView = await client.evaluate(async (target) => {
   // steer like a player who knows the way back: follow a flow field toward the lit camp
   const goals = w.goalCellsAt(target.x, target.z, 1);
   const params = { allowDig: false, allowUnder: false, openCost: 1, digCost: 7, underCost: 9, burrowCost: 3, layerChangeCost: 4, lightCost: 0, lightFloor: 1 };
+  let resting = false;
   game.hiveMove = () => {
+    // a sensible hive player: rest (obey) when will runs low, then push again
+    if (me.will < 0.2) resting = true;
+    if (resting && me.will > 0.7) resting = false;
+    if (resting) return [0, 0];
     const f = w.fields.get('gate-ritual', goals, params, w.time);
     const dx0 = target.x - me.hiveX, dz0 = target.z - me.hiveZ, l0 = Math.hypot(dx0, dz0);
     if (l0 < 0.5) return [0, 0];
@@ -144,7 +166,7 @@ console.log('client:', JSON.stringify(clientView));
 const hostAfter = await host.evaluate((cid) => {
   const w = window.__tunnels.world;
   const p = w.players.find((q) => q.id === cid);
-  return { hive: p.hive, downed: p.downed, fuelSpentRespawn: w.fuel.spent.respawn || 0, runState: w.runState };
+  return { hive: p.hive, downed: p.downed, fuelSpentRespawn: w.fuel.spent.respawn || 0, runState: w.runState, failReason: w.failReason, players: w.players.map((q) => [q.id, q.hive, q.downed, q.connected]) };
 }, clientId);
 console.log('host after:', JSON.stringify(hostAfter));
 await browser.close();
