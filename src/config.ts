@@ -130,8 +130,8 @@ export const CAMP = {
 // Queen, learning, director (M3)
 export const QUEEN = {
   thinkInterval: 1.0, // GDD: scores intents about once a second
-  minCommit: 8, // s an intent is kept at least
-  maxCommit: 25,
+  minCommit: 6, // s an intent is kept at least
+  maxCommit: 16,
   senseRange: 14, // m: the queen only knows what her bugs sense (bugs within this of the event)
   minTendril: 20, // GDD: 20 to 200 bugs
   maxTendril: 200,

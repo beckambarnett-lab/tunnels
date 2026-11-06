@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { CELL } from '../config';
 import { World } from '../sim/world';
 
-export type DebugView = 'off' | 'flow' | 'flowUnder' | 'light' | 'seen';
-export const DEBUG_VIEWS: DebugView[] = ['off', 'flow', 'flowUnder', 'light', 'seen'];
+export type DebugView = 'off' | 'flow' | 'flowUnder' | 'light' | 'seen' | 'danger' | 'opportunity' | 'memory';
+export const DEBUG_VIEWS: DebugView[] = ['off', 'flow', 'flowUnder', 'light', 'seen', 'danger', 'opportunity', 'memory'];
 
 /** Floor overlays: flow-field distance + direction, light cost, breach visibility mask. */
 export class DebugViews {
@@ -57,7 +57,17 @@ export class DebugViews {
     for (let i = 0; i < n; i++) {
       const o = i * 4;
       let r = 0, gg = 0, b = 0, a = 0;
-      if (this.view === 'light') {
+      if (this.view === 'danger' || this.view === 'opportunity' || this.view === 'memory') {
+        const inf = w.queen?.influence;
+        if (inf && g.cells[i] === 0) {
+          const map = this.view === 'danger' ? inf.danger : this.view === 'opportunity' ? inf.opportunity : inf.memory;
+          const v = Math.min(1, inf.at(map, g.centerX(i), g.centerZ(i)) / (this.view === 'memory' ? 3 : 2));
+          if (this.view === 'danger') (r = 255 * v), (gg = 60 * v);
+          else if (this.view === 'opportunity') (gg = 255 * v), (b = 120 * v);
+          else (r = 160 * v), (b = 255 * v);
+          a = v > 0.02 ? 60 + 150 * v : 0;
+        }
+      } else if (this.view === 'light') {
         const e = w.light.eff[i], raw = w.light.raw[i];
         r = Math.min(255, e * 255);
         gg = Math.min(255, raw * 120);

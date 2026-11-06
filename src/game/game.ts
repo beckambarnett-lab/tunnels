@@ -25,6 +25,7 @@ export interface GameOptions {
   bugs: number;
   res?: number;
   auto?: boolean;
+  act?: number;
 }
 
 export class Game {
@@ -54,6 +55,9 @@ export class Game {
   bench: { start: number; samples: number[]; sim: number[]; render: number[]; bugs: number[]; done: boolean; result?: any } | null = null;
   private squealT = 0;
   debugFire = false; // test hook: hold the trigger
+  lastTell = '';
+  shake = 0;
+  lastUnlock = '';
 
   constructor(public canvas: HTMLCanvasElement, public opts: GameOptions) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -75,6 +79,10 @@ export class Game {
       layout: opts.bench ? benchLayout() : undefined,
     });
     const L = this.world.layout;
+    // the prototype nest plays as act 2 (the base: probes against a strong position) unless ?act=N
+    this.world.director.act = opts.act ?? 2;
+    // a breather to set up camp before the hive starts pushing
+    if (!opts.bench) this.world.director.startRelaxed(45);
     this.me = this.world.addPlayer('local', L.start.x, L.start.z);
     if (opts.bench) this.setupBench();
     else {
@@ -97,7 +105,8 @@ export class Game {
     this.panel.onChange = (s) => {
       this.world.targetBugs = s.bugs;
       this.debug.setView(s.view);
-      this.world.breachAllowed = s.breaches;
+      this.world.debugBreaches = s.breaches;
+      this.world.queen?.force((s.intent || null) as any);
     };
     if (opts.bench) this.panel.state.god = true;
     this.panel.refresh();
@@ -142,7 +151,7 @@ export class Game {
     const w = this.world, p = this.me;
     p.slots = [newItem('flashlight'), newItem('flamethrower'), newItem('spool')];
     p.sel = 0;
-    const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper'];
+    const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper', 'lightning'];
     const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), rx = -fz, rz = fx;
     kit.forEach((k, i) => {
       const along = 1.6 + Math.floor(i / 3) * 0.9, side = ((i % 3) - 1) * 0.9;
@@ -196,6 +205,18 @@ export class Game {
     ev.on('stomp', (e) => this.synth.thump(e.x, 0.1, e.z, 90, 0.5));
     ev.on('crank', () => this.synth.noiseBurst(this.me.x, 1, this.me.z, 0.05, 2000, 6, 0.25));
     ev.on('generatorOff', (e) => this.synth.thump(e.x, 0.5, e.z, 40, 0.5));
+    const tell = (e: any) => {
+      this.synth.tell(e.intent, e.x, e.z, this.me.x, this.me.z);
+      this.lastTell = `${e.intent}: ${e.tell ?? ''}`;
+    };
+    ev.on('tell', tell);
+    ev.on('tellPulse', (e) => this.synth.tell(e.intent, e.x, e.z, this.me.x, this.me.z));
+    ev.on('deviceBroken', (e) => this.synth.noiseBurst(e.x, 1, e.z, 0.4, 2500, 1, 0.8));
+    ev.on('unlock', (e) => (this.lastUnlock = e.name));
+    ev.on('lightning', (e) => {
+      this.fx.bolt(e.pts);
+      this.synth.zap(e.pts[0][0], e.pts[0][1]);
+    });
     ev.on('breach', (e) => this.synth.breach(e.x, e.kind === 'ceiling' ? 2.6 : 0.5, e.z));
     ev.on('dig', (e) => this.synth.scratch(e.x, e.z));
     ev.on('scratch', (e) => this.synth.scratch(e.x, e.z));
@@ -271,6 +292,10 @@ export class Game {
       this.lights.ambient.intensity = 0.06;
       if (!this.scene.fog) this.scene.fog = new THREE.FogExp2(0x000000, 0.045);
     }
+    if (this.shake > 0 && !top) {
+      this.camera.position.x += (Math.random() - 0.5) * this.shake;
+      this.camera.position.y += (Math.random() - 0.5) * this.shake;
+    }
     this.renderer.render(this.scene, top ? this.topCam : this.camera);
     this.renderMs = performance.now() - r0;
     this.hud.update(me, this.time, { locked: locked || this.opts.bench });
@@ -309,7 +334,17 @@ export class Game {
       cx += sw.x[j];
       cz += sw.z[j];
     });
-    this.synth.chitter(n, n ? cx / n : cam.x, n ? cz / n : cam.z, dt, false);
+    const q = w.queen;
+    const silent = !!q && w.time < q.silenceUntil;
+    this.synth.chitter(n, n ? cx / n : cam.x, n ? cz / n : cam.z, dt, silent);
+    this.synth.setDrone(silent ? 0 : 0.05);
+    this.synth.music(!!q && q.intent === 'assault' && !silent && w.swarm.stats.strike > 20, dt);
+    // undermine tell: the ground trembles when bugs are under your feet
+    let under = 0;
+    sw.hash.forEachNear(cam.x, cam.z, 3.5, (j) => {
+      if (sw.alive[j] && sw.layer[j]) under++;
+    });
+    this.shake = Math.min(0.05, under * 0.002);
   }
 
   updateOverlay(dt: number, simMs: number) {
@@ -320,7 +355,12 @@ export class Game {
       `sim ${simMs.toFixed(2)} ms (light ${tm.light.toFixed(2)} vis ${tm.vis.toFixed(2)} swarm ${tm.swarm.toFixed(2)} fire ${tm.fire.toFixed(2)})  render ${this.renderMs.toFixed(2)} ms`,
       `fields ${w.fields.fields.size}  builds ${w.fields.stats.builds}  worker ${w.fields.stats.avgMs.toFixed(1)} ms  tendrils ${w.tendrils.size}  queen ${w.queen?.phase ?? '-'}`,
       `calls ${this.renderer.info.render.calls}  tris ${(this.renderer.info.render.triangles / 1000).toFixed(0)}k  terrain rebuilds ${this.terrain.rebuilds}`,
-      `overwhelm ${(this.me.overwhelm * 100).toFixed(0)}%  touching ${this.me.touching}${this.panel.state.god ? '  [god]' : ''}`,
+      `overwhelm ${(this.me.overwhelm * 100).toFixed(0)}%  touching ${this.me.touching}${this.panel.state.god ? '  [god]' : ''}  fuel ${w.fuel.value.toFixed(1)}`,
+      `director ${w.director.state} (act ${w.director.act})  intensity ${w.director.team.toFixed(2)}  budget ${w.director.budget.toFixed(2)}  breaches ${w.breachAllowed ? 'on' : 'off'}`,
+      `queen intent ${w.queen?.intent ?? '-'}${w.queen?.forced ? ' [forced]' : ''}  top: ${Object.entries(w.queen?.scores ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(', ')}`,
+      `belief ${Object.entries(w.light.belief).map(([k, v]) => `${k} ${v.toFixed(2)}`).join('  ')}`,
+      `unlocked ${[...w.learning.unlocked].join(', ') || '-'}`,
+      `last tell: ${this.lastTell}`,
     ]);
   }
 

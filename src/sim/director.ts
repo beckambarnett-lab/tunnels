@@ -51,6 +51,12 @@ export class Director {
     return this.state === 'Build Up' || this.state === 'Sustain Peak';
   }
 
+  /** Open the run with a calm spell of `secs` seconds (Relax, then the normal loop). */
+  startRelaxed(secs: number) {
+    this.state = 'Relax';
+    this.since = this.w.time - (this.actCfg.relax - secs);
+  }
+
   bump(id: string, a: number) {
     this.intensity.set(id, Math.min(1, (this.intensity.get(id) || 0) + a));
   }
@@ -63,7 +69,7 @@ export class Director {
     if (this.log.length > 100) this.log.shift();
     this.state = s;
     this.since = this.w.time;
-    if (s === 'Sustain Peak') this.sustainFor = DIRECTOR.sustainMin + Math.random() * (DIRECTOR.sustainMax - DIRECTOR.sustainMin);
+    if (s === 'Sustain Peak') this.sustainFor = DIRECTOR.sustainMin + this.w.rng.next() * (DIRECTOR.sustainMax - DIRECTOR.sustainMin);
     this.w.events.emit('directorState', { state: s });
   }
 
@@ -116,7 +122,8 @@ export class Director {
     w.breachAllowed = this.state !== 'Relax';
     // hive oil: generous when the team struggles, lean when it cruises
     const struggling = w.fuel.value < 500 || team > 0.6;
-    w.camp.oilYieldMul = struggling ? 1.5 : team < 0.15 ? 0.75 : 1;
+    // (capped so a zapper harvest never pays back what it cost: 2.5 per body < 3 per zap kill)
+    w.camp.oilYieldMul = struggling ? 1.25 : team < 0.15 ? 0.75 : 1;
     // learning fallbacks come sooner for teams that cruise
     if (w.learning) w.learning.fallbackMul = team < 0.15 ? 0.85 : 1;
   }

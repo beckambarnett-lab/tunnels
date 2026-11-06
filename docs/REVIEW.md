@@ -74,5 +74,35 @@ Q5–Q9 in `docs/QUESTIONS.md`: port counts (generator 2 outputs), only the held
 - Wire-cutting rate is split by role: the sabotage tendril (wire-cutters) chews at full rate, other bugs only nibble (15%). Without this, every massing bug shredded any cable in the dark within a second.
 - The starting kit is a test kit on the floor; the house, the van and the GDD's progression come in M5.
 
+## Milestone 3 — The queen and director (tag `milestone-3`)
+
+### What was built
+- **The queen** scores her ten intents about once a second from three influence maps (danger, opportunity, memory) within the director's budget, and turns the winner into tendril goals, field parameters and bravery. Each intent has its GDD tell, shown as an event, a console line and a generated sound.
+- **The learning tree**: nine habits unlock nine counters, with the GDD's fairness rules.
+- **Electric belief** per light type: lamps stop scaring them once they've touched enough of them without burning; lightning kills nearby restore it.
+- **The Hive Director**: intensity per player, the four-state loop, the act curve and its levers. Never shown in game (only in the debug overlay).
+- **Lightning gun** (in the test kit), device damage and repair.
+
+### Playtest this
+1. Open `?act=3` for a harder night (default is act 2). Watch the overlay's `director` and `queen intent` lines and the `last tell` line while you play. Try to call the queen's plan from the sounds before reading the overlay; that's the real gate for this milestone.
+2. Use the panel's **force intent** dropdown to hear and see each intent in turn:
+   - *siege*: light a lamp (generator + cable). A ring grows at its edge and gets bolder until they rush and break it (hold R to fix).
+   - *assault*: the chitter and drone cut out for 3 s, then music starts and everything comes at you.
+   - *undermine*: the camera and generator tremble, dirt trickles, and they come up through the floor behind you.
+   - *flank / reroute*: scratching in the walls at your sides; new holes appear in walls you've seen.
+   - *bait*: a small group stands in your light. Burning them is what the queen wants.
+3. Learning: run long cables, burn a lot, harvest a lot, keep your back to a wall. Watch `unlocked` in the overlay (also logged to the console as `[learning] unlocked …`).
+4. Belief: let bugs crowd a lamp for a minute and watch `belief lamp` fall; zap a few near it with the lightning gun to push it back up.
+
+### Decisions where the GDD was open
+- Q10: belief drops are rate-limited (each bug once per 3 s, each light type once per 2 s), or a crowd breaks belief in seconds.
+- Intent choice is "dual utility" (weighted random among near-best scores) so the queen is readable in spirit but not predictable in detail.
+- Siege bravery grows over time until the ring can rush an electric lamp (bravery up to 7×); bait bugs are brave enough to stand in a flashlight. Without that, an omni lamp's own base is always lit and could never be attacked.
+- The run opens with a 45 s Relax and the prototype plays as act 2 by default (the GDD's base act) so you can set up camp.
+
+### Deviations
+- Wire chewing by the M2 sabotage tendril now waits for the Sabotage counter to be learned (25 m of cable, or a 7-minute fallback), as the learning tree says.
+- Director oil-yield lever is 0.75–1.25× (not open-ended) so harvesting never beats its own cost.
+
 ## Next
-Milestone 3: the queen and director.
+Milestone 4: multiplayer and the hive.

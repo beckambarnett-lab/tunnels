@@ -235,6 +235,116 @@ export class Synth {
     o.stop(t + 0.22);
   }
 
+  /** Every queen intent has a sound signature players can learn (GDD audio direction). */
+  tell(intent: string, x: number, z: number, px: number, pz: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const at = (dt: number, fn: () => void) => setTimeout(fn, dt * 1000);
+    switch (intent) {
+      case 'conceal': // an ordinary-sounding insect buzz, a little too regular
+        for (let k = 0; k < 4; k++) at(k * 0.25, () => this.tone(x, 0.3, z, 230, 0.08, 0.04, 'triangle'));
+        break;
+      case 'probe': // single taps
+        for (let k = 0; k < 3; k++) at(k * 0.7 + Math.random() * 0.2, () => this.noiseBurst(x + (Math.random() - 0.5) * 3, 0.2, z + (Math.random() - 0.5) * 3, 0.03, 4200, 4, 0.5));
+        break;
+      case 'sabotage': // fine, fast chewing at the cable
+        for (let k = 0; k < 10; k++) at(k * 0.07, () => this.noiseBurst(x, 0.05, z, 0.025, 6000, 8, 0.35));
+        break;
+      case 'flank': // scratching moving through the walls at your sides
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 6) * Math.PI - Math.PI / 2;
+          at(k * 0.3, () => this.scratch(px + Math.cos(a) * 3, pz + Math.sin(a) * 3));
+        }
+        break;
+      case 'undermine': // low rumble under the generator
+        this.rumble(x, z, 2.5);
+        break;
+      case 'reroute': // distant thuds behind you
+        for (let k = 0; k < 3; k++) at(k * 0.9, () => this.thump(px - (x - px) * 2, 0.5, pz - (z - pz) * 2, 50, 0.35));
+        break;
+      case 'siege': // a swelling chitter around one lamp
+        for (let k = 0; k < 14; k++) at(k * 0.12, () => this.noiseBurst(x + (Math.random() - 0.5) * 6, 0.2, z + (Math.random() - 0.5) * 6, 0.02, 3800, 3, 0.12 + k * 0.03));
+        break;
+      case 'bait': // odd, rising chirps in the open
+        for (let k = 0; k < 3; k++) at(k * 0.35, () => this.tone(x, 0.3, z, 900, 0.18, 0.08, 'sine', 2.2));
+        break;
+      case 'assault': // the nest goes silent (handled by muting); a single deep inhale
+        this.tone(px, 1, pz, 35, 1.5, 0.12, 'sine');
+        break;
+      case 'retreat': // scratching that fades away
+        for (let k = 0; k < 5; k++) at(k * 0.5, () => this.noiseBurst(x + (Math.random() - 0.5) * 10, 1, z + (Math.random() - 0.5) * 10, 0.15, 1300, 2.5, 0.35 * (1 - k / 5), true));
+        break;
+    }
+    void now;
+  }
+
+  tone(x: number, y: number, z: number, f: number, dur: number, gain: number, type: OscillatorType = 'sine', sweep = 1) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const o = ctx.createOscillator();
+    o.type = type;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    o.frequency.setValueAtTime(f, t);
+    if (sweep !== 1) o.frequency.exponentialRampToValueAtTime(f * sweep, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(this.positioned(x, y, z));
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  }
+
+  rumble(x: number, z: number, dur: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const s = ctx.createBufferSource();
+    s.buffer = this.noise;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 90;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(1.2, t + 0.4);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    s.connect(f).connect(g).connect(this.positioned(x, -0.5, z, 4));
+    s.start(t, 0, dur + 0.1);
+  }
+
+  private musicGain: GainNode | null = null;
+  private musicT = 0;
+  /** Music flips on during an assault (GDD: like Deep Rock Galactic's survival mode). */
+  music(on: boolean, dt: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    if (!this.musicGain) {
+      this.musicGain = ctx.createGain();
+      this.musicGain.gain.value = 0;
+      this.musicGain.connect(this.master);
+    }
+    this.musicGain.gain.setTargetAtTime(on ? 0.35 : 0, ctx.currentTime, on ? 0.05 : 1.2);
+    if (!on) return;
+    this.musicT -= dt;
+    if (this.musicT > 0) return;
+    this.musicT = 0.25; // 240 bpm pulse
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    const notes = [55, 55, 65.4, 49];
+    o.frequency.value = notes[Math.floor(ctx.currentTime * 4) % 4];
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 400;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.01, t + 0.22);
+    o.connect(lp).connect(g).connect(this.musicGain);
+    o.start(t);
+    o.stop(t + 0.24);
+  }
+
   setDrone(level: number) {
     if (!this.ctx) return;
     this.droneGain.gain.setTargetAtTime(level, this.ctx.currentTime, 0.5);

@@ -6,6 +6,7 @@ export interface PanelState {
   god: boolean;
   breaches: boolean;
   bugs: number;
+  intent: string;
 }
 
 /** Debug panel: field views, top-down camera, bug-count slider, god mode, breach switch. */
@@ -18,7 +19,7 @@ export class Panel {
   private viewBtns: HTMLButtonElement[] = [];
   constructor(initialBugs: number) {
     this.el = document.getElementById('debug-panel')!;
-    this.state = { view: 'off', topDown: false, god: false, breaches: true, bugs: initialBugs };
+    this.state = { view: 'off', topDown: false, god: false, breaches: true, bugs: initialBugs, intent: '' };
     this.el.innerHTML = '';
     const title = document.createElement('div');
     title.className = 'dp-title';
@@ -53,6 +54,19 @@ export class Panel {
     this.el.appendChild(this.toggle('top-down [T]', 'topDown'));
     this.el.appendChild(this.toggle('god mode [G]', 'god'));
     this.el.appendChild(this.toggle('breaches', 'breaches'));
+    const sel = document.createElement('select');
+    sel.id = 'intent-select';
+    for (const v of ['', 'conceal', 'probe', 'sabotage', 'flank', 'undermine', 'reroute', 'siege', 'bait', 'assault', 'retreat']) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v || '(queen decides)';
+      sel.appendChild(o);
+    }
+    sel.onchange = () => {
+      this.state.intent = sel.value;
+      this.onChange(this.state);
+    };
+    this.el.appendChild(this.row('force intent', sel));
     const help = document.createElement('div');
     help.className = 'dp-help';
     help.textContent = 'Click to look. WASD move, Shift sprint, Ctrl/C crouch, LMB flamethrower, F flashlight.';

@@ -165,7 +165,7 @@ const result = await page.evaluate(async () => {
     const zapKills = window.__tunnels.actions.zap(w, me);
     const fAfterZap = w.fuel.value;
     const n = c.collectBodies({ ...me, x: sx, z: sz });
-    out.harvest = { zapKills, bodies: n, zapCost: +(f0 - fAfterZap).toFixed(2), oil: +(w.fuel.value - fAfterZap).toFixed(2), netLoss: +(f0 - w.fuel.value).toFixed(2) };
+    out.harvest = { zapKills, bodies: n, zapCost: +(f0 - fAfterZap).toFixed(2), oil: +(w.fuel.value - fAfterZap).toFixed(2), yieldMul: c.oilYieldMul, netLoss: +(f0 - w.fuel.value).toFixed(2) };
     // fire kills leave nothing
     const before = c.bodies.length;
     const j = w.swarm.spawn(sx, sz);
@@ -223,7 +223,7 @@ const checks = {
   lampDrain: Math.abs(r.fuelDrain.lamp - r.fuelDrain.lampExpected) < 0.02,
   cut: r.wireCut && r.lampOffAfterCut,
   repair: r.repaired && r.lampOnAfterRepair,
-  harvest: r.harvest.bodies === r.harvest.zapKills && r.harvest.zapKills > 0 && Math.abs(r.harvest.oil - r.harvest.bodies * 2) < 1e-6 && r.harvest.netLoss > 0,
+  harvest: r.harvest.bodies === r.harvest.zapKills && r.harvest.zapKills > 0 && Math.abs(r.harvest.oil - r.harvest.bodies * 2 * r.harvest.yieldMul) < 1e-6 && r.harvest.netLoss > 0,
   fireLeavesNothing: r.fireBodies === 0,
   pack: r.packLamp && r.coil && r.packGenerator && r.lightsOutWhilePacked,
   move: r.movedCampPowered,

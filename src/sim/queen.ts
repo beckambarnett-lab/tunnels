@@ -86,24 +86,23 @@ export class Queen {
     const mem = (i: Intent) => Math.min(1, (this.chosen['ok:' + i] || 0) * 0.25);
     const b = D.budget;
     const s: Record<Intent, number> = {
-      conceal: D.act <= 1 ? 3 : b < 0.3 ? 1.2 : 0.6,
+      conceal: D.act <= 1 ? 3 : b < 0.3 ? 1.2 : 0.4,
       probe: 0.9 + (lit ? 0.3 : 0) + (L.has('testLight') ? 0.4 : 0) + (L.has('triggerMotion') && w.camp.devices.some((d) => d.kind === 'motion') ? 0.5 : 0) - (L.has('darkRush') ? 0.8 : 0),
       sabotage: L.has('sabotage') && darkWire ? 2.0 + mem('sabotage') : L.has('sabotageGenerator') && camp ? 1.5 : 0,
       flank: L.has('flank') || L.has('breach') ? 1.7 + (camp ? 0.3 : 0) + mem('flank') : 0,
       undermine: camp ? 1.5 + mem('undermine') : 0.6,
-      reroute: 1.1 + (players.length ? 0.2 : 0),
+      reroute: 1.3 + (players.length ? 0.2 : 0),
       siege: lit ? 1.5 + mem('siege') : 0,
-      bait: L.has('bait') && flameRecent ? 2.2 : 0,
+      bait: L.has('bait') && flameRecent ? 1.8 : 0,
       assault: opening && b >= 0.5 && (D.state === 'Build Up' || D.state === 'Sustain Peak') ? 1.0 + D.team * 0.8 + (L.has('darkRush') ? 1.5 : 0) : 0,
       retreat: D.state === 'Relax' ? 10 : burns > 60 ? 4 : 0,
     };
     this.raw = { ...s };
-    // variety: recently and often used intents lose appeal (the hive keeps you guessing); small jitter
+    // a light penalty for repeating the last intent (the hive keeps you guessing)
     for (const k of INTENTS) {
       if (k === 'retreat') continue;
-      const ago = w.time - (this.lastChosenAt[k] ?? -1e9);
-      s[k] -= 1.6 * Math.exp(-ago / 150) + 0.12 * (this.chosen[k] || 0);
-      s[k] += (w.rng.next() - 0.5) * 0.3;
+      if (k === this.intent) s[k] -= 0.8;
+      s[k] -= 0.05 * (this.chosen[k] || 0);
     }
     if (D.state !== 'Relax') s.retreat = Math.min(s.retreat, burns > 60 ? 4 : -1);
     return s;
@@ -126,18 +125,28 @@ export class Queen {
     if (this.forced) next = this.forced;
     else if (D.state === 'Relax') next = 'retreat';
     else if (D.state === 'Peak Fade') next = this.intent === 'retreat' ? 'conceal' : this.intent; // the current fight plays out
-    else if (!this.started) {
-      let best: Intent = 'conceal', bs = -1e9;
-      for (const k of INTENTS) if (sc[k] > bs) (bs = sc[k]), (best = k);
-      next = best;
-    } else if (since >= this.commitFor || this.intent === 'retreat' || (this.raw[this.intent] ?? 0) <= 0) {
-      let best: Intent = 'probe', bs = -1e9;
-      for (const k of INTENTS) if (sc[k] > bs) (bs = sc[k]), (best = k);
-      next = best;
+    else if (!this.started) next = this.pick(sc); else if (since >= this.commitFor || this.intent === 'retreat' || (this.intent !== 'assault' && (this.raw[this.intent] ?? 0) <= 0)) {
+      // (an assault, once the nest has gone silent, always follows through)
+      next = this.pick(sc);
     }
     if (next !== this.intent || !this.started) this.begin(next, sc[next]);
     this.phase = this.intent;
     this.syncTendrils();
+  }
+
+  /**
+   * Dual-utility choice: among feasible intents scoring within 0.6 of the best, pick at random
+   * weighted by score. Predictable in spirit, never in detail.
+   */
+  pick(sc: Record<Intent, number>): Intent {
+    let best = -1e9;
+    for (const k of INTENTS) if ((this.raw[k] ?? 0) > 0 && sc[k] > best) best = sc[k];
+    const pool = INTENTS.filter((k) => (this.raw[k] ?? 0) > 0 && sc[k] >= best - 0.6);
+    if (!pool.length) return 'probe';
+    const wts = pool.map((k) => Math.max(0.05, sc[k] - (best - 0.6)));
+    let r = this.w.rng.next() * wts.reduce((a, b) => a + b, 0);
+    for (let k = 0; k < pool.length; k++) if ((r -= wts[k]) <= 0) return pool[k];
+    return pool[pool.length - 1];
   }
 
   private started = false;
@@ -268,6 +277,8 @@ export class Queen {
     if (i === 'probe') committed = Math.min(committed, 12);
     if (i === 'bait') committed = Math.min(committed, 15);
     if (i === 'conceal') committed = Math.min(committed, 40);
+    if (i === 'reroute') committed = Math.min(committed, 60); // a digging party, not the nest
+    if (i === 'sabotage') committed = Math.min(committed, 90);
     if (i === 'retreat') committed = N;
     if (i === 'assault') committed = N;
     const roles: { intent: string; size: number }[] = [];

@@ -151,13 +151,24 @@ export class CampMesh {
       if (!g) continue;
       g.rotation.y = d.yaw;
       const bulb = g.getObjectByName('bulb') as THREE.Mesh | undefined;
-      const on = d.kind === 'generator' ? d.running : !!d.light?.on;
+      const on = (d.kind === 'generator' ? d.running : !!d.light?.on) && !d.broken;
+      g.rotation.z = d.broken ? 0.5 : 0; // knocked over
       if (bulb) {
         const m = bulb.material as THREE.MeshStandardMaterial;
         m.emissive.setHex(on ? (d.kind === 'generator' ? 0x40ff40 : 0xffe0a0) : 0x000000);
         m.emissiveIntensity = on ? 2 : 0;
       }
-      if (d.kind === 'generator') g.position.y = d.running ? Math.sin(this.blink * 70) * 0.006 : 0;
+      if (d.kind === 'generator') {
+        // undermine tell: the ground under the generator trembles
+        const sw = this.world.swarm;
+        let under = 0;
+        sw.hash.forEachNear(d.x, d.z, 3, (j) => {
+          if (sw.alive[j] && sw.layer[j]) under++;
+        });
+        const tr = Math.min(0.06, under * 0.004);
+        g.position.y = (d.running ? Math.sin(this.blink * 70) * 0.006 : 0) + (tr ? Math.sin(this.blink * 47) * tr : 0);
+        g.position.x = d.x + (tr ? Math.sin(this.blink * 53) * tr : 0);
+      }
     }
     this.syncWires(c, me);
     // bodies

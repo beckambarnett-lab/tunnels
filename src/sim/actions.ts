@@ -83,6 +83,8 @@ export function promptFor(w: World, p: SimPlayer, t: Target | null): string {
   const lines: string[] = [];
   if (p.layingWire != null) lines.push('Laying cable — E on a device to connect, alternate LMB/RMB to reel in, Q to drop the end');
   if (held && PLACEABLE.includes(held.kind)) lines.push(`RMB: place ${ITEM_NAMES[held.kind]}`);
+  const br = c.nearestBroken(p);
+  if (br) lines.push(`Hold R: repair the ${ITEM_NAMES[br.kind]}${p.repairT > 0 ? ` (${Math.round((p.repairT / (CAMP.repairTime * 1.5)) * 100)}%)` : ''}`);
   const cut = c.nearestCut(p);
   if (cut) lines.push(`Hold R: repair cut cable${p.repairT > 0 ? ` (${Math.round((p.repairT / CAMP.repairTime) * 100)}%)` : ''}`);
   if (t) {

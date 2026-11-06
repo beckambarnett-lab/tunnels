@@ -5,7 +5,8 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 ## Status
 - Milestone 1 (swarm prototype): **done, gate passed, tagged `milestone-1`**
 - Milestone 2 (the moving camp): **done, gate passed, tagged `milestone-2`**
-- Current: Milestone 3 (queen and director), task 3.1
+- Milestone 3 (queen and director): **done, gate passed, tagged `milestone-3`**
+- Current: Milestone 4 (multiplayer and the hive), task 4.1
 
 ## Done
 ### Milestone 1
@@ -36,20 +37,45 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - 2.11 Tab war map.
 - M2 test kit at the start (the house/van comes in M5): flashlight, flamethrower, spool in hand; generator, 2 lamps, floodlight, motion lamp, 3 spools, splitter, zapper on the floor.
 
+### Milestone 3
+- 3.1 Influence maps (danger / opportunity / memory, 4 m cells), debug views `danger`, `opportunity`, `memory`.
+- 3.2 Queen utility AI: scores the 10 intents once a second; dual-utility pick (weighted random among those within 0.6 of the best), 6–16 s commitment, light repeat penalty; works within the director's budget and tendril-size ceiling; logs every choice with its tell.
+- 3.3 Intent behaviours: conceal (small, oddly orderly), probe (scouts tap into light), sabotage (spread along dark cable, then the generator), flank (cheap digging through walls to the darkest side spot), undermine (under layer to the generator), reroute (dig fresh holes in walls you've seen), siege (one lamp, bravery grows until they rush the fixture), bait (15 brave bugs stand in your light), assault (3 s of nest-wide silence, then everything strikes), retreat (withdraw; drag the dead once learned).
+- 3.4 Tells: each intent emits a tell event at the start and a pulse every 4 s; each has a generated sound signature; assault mutes the chitter and drone, then music flips on; undermine shakes the camera and the generator.
+- 3.5 Electric belief per type (−0.02 per touch, rate-limited; +0.05 per lightning kill within 5 m; floor 0.1).
+- 3.6 Learning tree: 9 habits → counters; fairness (only sensed habits count, nothing from dying, time fallbacks).
+- 3.7 Hive Director: per-player intensity, Build Up → Sustain Peak → Peak Fade → Relax loop, act curve (relax 90/75/30/15 s), levers (budget, tendril size, breach permission, oil yield 0.75–1.25×, fallback pace). Runs open with a 45 s Relax. Prototype plays as act 2 unless `?act=N`.
+- 3.8 Lightning gun (12 fuel, chains through up to 5, bodies, restores belief); on the floor in the test kit.
+- Devices can be damaged and broken (siege, generator sabotage); hold R to repair.
+- Debug panel: "force intent" selector.
+
 ## In progress
 - (none)
 
 ## Next
-- M3: influence maps, utility-AI queen with all 10 intents + tells, electric belief, learning tree, Hive Director, lightning gun.
+- M4: transport (BroadcastChannel + PeerJS), lobby, host/join, world snapshot, player sync, swarm sync (local sim + host keyframes), dig/camp/fuel events, carrying + revive, hive player + respawn ritual, pause.
 
 ## Known bugs / limits
 - Headless Chromium has no GPU, so in-container fps numbers are software-rendered (5–12 fps). CPU cost per frame is the measured stand-in (see Gate results). Real-GPU fps needs a human run of `?bench`.
 - Undermine tendrils only use the under layer when it's much cheaper than walking; M3's Undermine intent will force it.
-- M1 queen strikes on a fixed rhythm (~14 s mass, ~9 s strike); M3 replaces this with the director + utility AI.
-- Cable gets chewed very fast once a sabotage tendril reaches it (2 s); tuning belongs to the M3 director/intent work.
+- A sabotage tendril chews through cable in ~2 s once it arrives; before Sabotage is learned, nibbling cuts take ~45 s.
+- With the autopilot (god mode, never fights back), Peak Fade usually ends by its 30 s timeout rather than by the fight resolving.
+- The natural mix of intents varies run to run; a 15-minute Node run (seed 5) chose all 10.
 - Floor eruptions are frequent: undermining tendrils dive under lit ground and come up in the dark behind you. Breaches count once per hole (10 s window).
 
 ## Gate results
+
+### Milestone 3 — PASSED (2026-11-06)
+| Check | How | Result |
+| --- | --- | --- |
+| Each queen intent triggers and shows its tell | `tests/queen.test.ts`: force each intent in an arena and check behaviour + tell | **10/10**: conceal (aligned few, <30 bugs near), probe (belief drops), sabotage (cable cut), flank (>5 cells dug through the wall), undermine (>20 bugs under the floor), reroute (fresh holes), siege (lamp damaged), bait (≤15 bugs standing at the spot), assault (silence with 0 striking, then >100 striking), retreat (mean distance +5 m) |
+| Same, in the browser | `scripts/gate3.mjs` forces each intent for 8 s | **10/10** ran, each with 3 tell events, 0 console errors |
+| Intents also arise naturally | `tests/natural.test.ts`, 15 min unscripted (seed 5, act 3) | all 10 chosen: undermine 3, siege 2, probe 3, reroute 2, bait 2, sabotage 2, flank 4, assault 2, conceal 1, retreat 14; conceal also confirmed in act 1 |
+| Learning unlocks fire from player habits | `tests/learning.test.ts` (one test per habit + 3 fairness tests) | all 9 habits unlock their counter; no unlock without bugs sensing it; none while downed; time fallbacks work |
+| Same, in the browser | gate3: lay 26 m of cable, flame 22 s, harvest 12 bodies | unlocked Sabotage (25 m of cable), Sabotage of the generator (3 cuts), Spreading out + Baiting (20 s of flame), Dragging the dead (12 bodies) |
+| Director cycles its states, logged to console | `tests/director.test.ts`; gate3 reads the game's console | Build Up → Sustain Peak → Peak Fade → Relax → Build Up, with `[director t=…] A -> B (reason)` lines (7 in the browser run) |
+| No console errors | gate3 | 0 |
+| Regression | gate2 | PASS (cable now cut after ~48 s by nibbling, since Sabotage isn't learned yet; director yield lever capped at 1.25× so harvesting never pays back a zap) |
 
 ### Milestone 2 — PASSED (2026-11-06)
 Node: `tests/camp.test.ts` (12 tests). Browser: `scripts/gate2.mjs` drives the real game at seed 1 with 600 bugs; passed 3 runs out of 3 after fixing a flaky test setup (see below).

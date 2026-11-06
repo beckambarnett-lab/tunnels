@@ -19,18 +19,29 @@ describe('natural play', () => {
     // camp
     p.carrying = newItem('generator');
     const gen = w.camp.place(p)!;
-    const lampAt = { x: p.x + Math.sin(p.yaw) * 4, z: p.z + Math.cos(p.yaw) * 4 };
-    p.slots[2] = newItem('lamp');
-    p.sel = 2;
-    p.x = lampAt.x - Math.sin(p.yaw) * 0.9;
-    p.z = lampAt.z - Math.cos(p.yaw) * 0.9;
-    const lamp = w.camp.place(p);
-    p.slots[2] = newItem('motion');
-    p.yaw += 1.5;
-    w.camp.place(p);
+    // place the lamp and motion lamp wherever there's room around the generator
+    const placeAround = (kind: any) => {
+      for (let k = 0; k < 16; k++) {
+        p.slots[2] = newItem(kind);
+        p.sel = 2;
+        const a = (k / 16) * Math.PI * 2;
+        p.x = gen.x + Math.sin(a) * 3;
+        p.z = gen.z + Math.cos(a) * 3;
+        p.yaw = a;
+        if (!w.grid.isOpenAt(p.x, p.z)) continue;
+        const d = w.camp.place(p);
+        if (d) return d;
+      }
+      return null;
+    };
+    const lamp = placeAround('lamp');
+    placeAround('motion');
+    expect(lamp).toBeTruthy();
     const intents: Record<string, number> = {};
     const firstAt: Record<string, number> = {};
+    const dbg: string[] = [];
     w.events.on('intent', (e) => {
+      dbg.push(`${Math.round(w.time)} ${e.intent} lit=${w.queen!.litDevices().length} gen=${w.camp.devices.find((d) => d.kind === 'generator')?.broken ? 'broken' : 'ok'} sc=${Object.entries(w.queen!.scores).map(([k, v]) => k.slice(0, 4) + ':' + v.toFixed(1)).join(' ')}`);
       intents[e.intent] = (intents[e.intent] || 0) + 1;
       firstAt[e.intent] ??= Math.round(w.time);
     });
@@ -53,6 +64,8 @@ describe('natural play', () => {
       else w.camp.dropWireEnd(p);
     };
     lay(lamp, 45, p.yaw - 1.5);
+    w.step(1 / 20);
+    expect(lamp!.powered).toBe(true);
     lay(null, 150, p.yaw + 2.2);
     p.x = gen.x + 0.8;
     p.z = gen.z;
@@ -86,6 +99,7 @@ describe('natural play', () => {
     console.log('belief:', JSON.stringify(w.light.belief), 'fuel left:', Math.round(w.fuel.value));
     const missing = INTENTS.filter((i) => !intents[i]);
     console.log('never chosen:', missing.join(', ') || 'none');
+    console.log(dbg.slice(0, 12).join('\n'));
     // conceal is the act-1 behaviour (GDD: the hive "conceals itself; acts almost like normal bugs")
     expect(missing.filter((m) => m !== 'conceal').length).toBeLessThanOrEqual(1);
     expect(w.learning.log.filter((l) => l.why !== 'time fallback').length).toBeGreaterThanOrEqual(3);

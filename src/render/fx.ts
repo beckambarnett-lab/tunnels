@@ -32,6 +32,7 @@ export class Fx {
   private crackTimer = 0;
 
   constructor(scene: THREE.Scene, public world: World) {
+    this.scene = scene;
     const tex = dotTexture();
     this.fireGeo = new THREE.BufferGeometry();
     this.fireGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.maxFire * 3), 3));
@@ -87,6 +88,25 @@ export class Fx {
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xbfe6ff }));
     scene.add(line);
     this.arcs.push({ line, life: 0.12 });
+  }
+
+  private scene!: THREE.Scene;
+  /** Lightning gun: a jagged chain through every bug it hit. */
+  bolt(pts: [number, number][]) {
+    if (!this.scene || pts.length < 2) return;
+    const v: THREE.Vector3[] = [];
+    for (let k = 0; k < pts.length - 1; k++) {
+      const [ax, az] = pts[k], [bx, bz] = pts[k + 1];
+      for (let s = 0; s < 5; s++) {
+        const t = s / 5;
+        v.push(new THREE.Vector3(ax + (bx - ax) * t + (Math.random() - 0.5) * 0.2, (k === 0 ? 1.2 - t * 0.9 : 0.3) + (Math.random() - 0.5) * 0.25, az + (bz - az) * t + (Math.random() - 0.5) * 0.2));
+      }
+    }
+    const [lx, lz] = pts[pts.length - 1];
+    v.push(new THREE.Vector3(lx, 0.25, lz));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v), new THREE.LineBasicMaterial({ color: 0xd8f0ff }));
+    this.scene.add(line);
+    this.arcs.push({ line, life: 0.15 });
   }
 
   trickle(x: number, z: number) {
