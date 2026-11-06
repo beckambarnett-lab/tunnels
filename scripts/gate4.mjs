@@ -113,9 +113,18 @@ const clientView = await client.evaluate(async (target) => {
   const me = game.me;
   const seenHive = me.hive;
   const order = me.order;
+  // steer like a player who knows the way back: follow a flow field toward the lit camp
+  const goals = w.goalCellsAt(target.x, target.z, 1);
+  const params = { allowDig: false, allowUnder: false, openCost: 1, digCost: 7, underCost: 9, burrowCost: 3, layerChangeCost: 4, lightCost: 0, lightFloor: 1 };
   game.hiveMove = () => {
-    const dx = target.x - me.hiveX, dz = target.z - me.hiveZ, l = Math.hypot(dx, dz);
-    return l < 0.4 ? [0, 0] : [dx / l, dz / l];
+    const f = w.fields.get('gate-ritual', goals, params, w.time);
+    const dx0 = target.x - me.hiveX, dz0 = target.z - me.hiveZ, l0 = Math.hypot(dx0, dz0);
+    if (l0 < 0.5) return [0, 0];
+    let c = w.grid.cellAt(me.hiveX, me.hiveZ);
+    if (f.next && c >= 0) for (let k = 0; k < 6; k++) { const n = f.next[c]; if (n < 0 || n >= w.grid.n) break; c = n; }
+    const tx = f.next ? w.grid.centerX(c) : target.x, tz = f.next ? w.grid.centerZ(c) : target.z;
+    const dx = tx - me.hiveX, dz = tz - me.hiveZ, l = Math.hypot(dx, dz) || 1;
+    return [dx / l, dz / l];
   };
   const waitGame = (secs, until) => new Promise((res) => { const s = w.time; const tick = () => (w.time - s >= secs || (until && until()) ? res(true) : setTimeout(tick, 50)); tick(); });
   const t0 = w.time;

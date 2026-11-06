@@ -190,7 +190,9 @@ export class Death {
     else p.will += DEATH.willRefill * dt;
     if (st >= 1 && lit > DEATH.ritualLight * 0.5) p.will -= DEATH.willDrainLight * dt; // the bugs hate the light
     p.will = Math.max(0, Math.min(1, p.will));
-    const reach = 3;
+    // steer toward the last open point along your direction (never a goal inside a wall)
+    let reach = 0;
+    while (reach < 3 && w.grid.isOpenAt(p.hiveX + mx * (reach + 0.25), p.hiveZ + mz * (reach + 0.25))) reach += 0.25;
     const px = p.hiveX + mx * reach, pz = p.hiveZ + mz * reach;
     const k = 1 - p.will; // no will left: you go where she wants
     t.gx = px * (1 - k) + o.x * k;
