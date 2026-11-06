@@ -138,12 +138,12 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
     if (inp.slot >= 0) p.sel = inp.slot;
     if (inp.scroll) p.sel = (p.sel + (inp.scroll > 0 ? 1 : 2)) % 3;
   }
-  // in the truck: the queen-keeper spends charge; gunners (and a solo driver) burn with the flamethrower
+  // in the truck: the queen-keeper spends charge; gunners burn with the flamethrower (solo is just the driver)
   if (p.riding && w.finale) {
     w.finale.input(p, inp.usePressed, inp.altPressed);
     const role = w.finale.roles.get(p.id);
     const fl = p.slots.find((s) => s?.kind === 'flamethrower');
-    if (inp.use && fl && (role === 'gunnerL' || role === 'gunnerR' || w.finale.roles.size === 1) && w.fuel.has(0.01)) {
+    if (inp.use && fl && (role === 'gunnerL' || role === 'gunnerR') && w.fuel.has(0.01)) {
       p.firing = true;
       w.fuel.drain(FUEL.flamethrowerPerSec * dt, 'flamethrower', w.time);
     }

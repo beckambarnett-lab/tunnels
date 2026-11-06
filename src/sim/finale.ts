@@ -46,7 +46,7 @@ export class Finale {
   isKeeper(id: string) {
     const r = this.roles.get(id);
     if (r === 'keeper') return true;
-    return r === 'driver' && ![...this.roles.values()].includes('keeper');
+    return r === 'driver' && this.roles.size === 3; // GDD: with three, the driver is also the queen-keeper
   }
 
   start() {

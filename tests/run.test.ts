@@ -190,3 +190,23 @@ describe('junk mods', () => {
     }
   });
 });
+
+describe('finale roles by player count (GDD, Decided)', () => {
+  it('4: driver, two gunners, queen-keeper; 3: driver is also keeper; 2: driver and flamer; 1: driver only', () => {
+    const w = new World({ seed: 2, night: true, bugs: -1 });
+    const f = w.finale!;
+    const mk = (n: number) => Array.from({ length: n }, (_, k) => ({ id: 'p' + k }) as any);
+    f.assignRoles(mk(4));
+    expect([...f.roles.values()]).toEqual(['driver', 'gunnerL', 'gunnerR', 'keeper']);
+    expect(f.isKeeper('p0')).toBe(false);
+    f.assignRoles(mk(3));
+    expect([...f.roles.values()]).toEqual(['driver', 'gunnerL', 'gunnerR']);
+    expect(f.isKeeper('p0')).toBe(true);
+    f.assignRoles(mk(2));
+    expect([...f.roles.values()]).toEqual(['driver', 'gunnerL']);
+    expect(f.isKeeper('p0')).toBe(false);
+    f.assignRoles(mk(1));
+    expect([...f.roles.values()]).toEqual(['driver']);
+    expect(f.isKeeper('p0')).toBe(false);
+  });
+});
