@@ -154,6 +154,19 @@ export class Fx {
       col[k * 3 + 2] = 0.1;
       k++;
     }
+    // bug-sprayer mist: treated as serious gear, useless against the hive
+    for (const p of w.players)
+      if (p.spraying && k < this.maxFire - 8)
+        for (let m = 0; m < 6; m++) {
+          const d = 0.6 + Math.random() * 2.2;
+          pos[k * 3] = p.x + p.aim[0] * d + (Math.random() - 0.5) * 0.4 * d;
+          pos[k * 3 + 1] = 1.2 + p.aim[1] * d + (Math.random() - 0.5) * 0.3;
+          pos[k * 3 + 2] = p.z + p.aim[2] * d + (Math.random() - 0.5) * 0.4 * d;
+          col[k * 3] = 0.15;
+          col[k * 3 + 1] = 0.25;
+          col[k * 3 + 2] = 0.15;
+          k++;
+        }
     this.fireGeo.setDrawRange(0, k);
     this.fireGeo.attributes.position.needsUpdate = true;
     this.fireGeo.attributes.color.needsUpdate = true;

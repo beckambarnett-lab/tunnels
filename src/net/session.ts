@@ -103,7 +103,7 @@ export class NetSession {
         let p = w.players.find((q) => q.id === from);
         if (!p) {
           p = w.addPlayer(from, w.layout.start.x + (w.rng.next() - 0.5), w.layout.start.z + (w.rng.next() - 0.5));
-          p.slots = [newItem('flashlight'), newItem('flamethrower'), newItem('spool')];
+          p.slots = w.run ? [newItem('sprayer'), newItem('zapper'), null] : [newItem('flashlight'), newItem('flamethrower'), newItem('spool')];
           w.events.emit('playerJoined', { id: from });
         }
         p.connected = true;

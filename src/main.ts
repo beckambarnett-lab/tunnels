@@ -12,7 +12,8 @@ const base = {
   auto: q.has('auto'),
   act: q.has('act') ? +q.get('act')! : undefined,
   res: q.has('res') ? +q.get('res')! : undefined,
-  load: q.has('load'),
+  load: q.has('load') ? q.get('load') || true : false,
+  night: q.has('night'),
 };
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 
@@ -21,7 +22,10 @@ async function start() {
   if (q.has('host')) choice = { mode: 'host', net: (q.get('net') as any) || 'local', room: (q.get('host') || 'TEST').toUpperCase() };
   else if (q.has('join')) choice = { mode: 'join', net: (q.get('net') as any) || 'local', room: (q.get('join') || 'TEST').toUpperCase() };
   else if ([...q.keys()].length) choice = { mode: 'solo' };
-  else choice = await showLobby();
+  else {
+    choice = await showLobby();
+    base.night = true; // the lobby plays the full night
+  }
 
   if (choice.mode === 'solo') {
     new Game(canvas, { ...base, role: 'solo' }).start();
@@ -39,7 +43,7 @@ async function start() {
     msg.innerHTML = `<div class="lobby"><h1>TUNNELS</h1><div class="tag">Joining room ${choice.room}…</div></div>`;
     session.onWelcome = (snap, you) => {
       msg.style.display = 'none';
-      new Game(canvas, { ...base, seed: snap.seed, bugs: snap.targetBugs, role: 'client', session, snapshot: snap, localId: you, room: choice.room }).start();
+      new Game(canvas, { ...base, seed: snap.seed, bugs: snap.targetBugs, role: 'client', session, snapshot: snap, localId: you, room: choice.room, night: !!snap.night }).start();
     };
   }
 }

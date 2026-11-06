@@ -123,6 +123,7 @@ export function promptFor(w: World, p: SimPlayer, t: Target | null): string {
 export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number) {
   const c = w.camp;
   p.firing = false;
+  p.spraying = false;
   p.aim = inp.aim;
   p.eye = inp.eye;
   if (!p.alive || p.downed || p.hive) {

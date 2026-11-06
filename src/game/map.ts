@@ -6,6 +6,7 @@ export class WarMap {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   open = false;
+  xray = false; // truck driver's x-ray: every open space ahead (hive tunnels are fast lanes full of bugs)
   constructor() {
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'map';
@@ -17,7 +18,8 @@ export class WarMap {
     this.canvas.style.display = on ? 'block' : 'none';
   }
   draw(w: World, meId: string, time: number) {
-    if (!this.open) return;
+    this.canvas.style.display = this.open || this.xray ? 'block' : 'none';
+    if (!this.open && !this.xray) return;
     const c = this.canvas;
     c.width = c.clientWidth;
     c.height = c.clientHeight;
@@ -27,7 +29,7 @@ export class WarMap {
     x.fillStyle = '#000';
     x.fillRect(0, 0, c.width, c.height);
     for (let i = 0; i < g.n; i++) {
-      if (!g.explored[i] || g.cells[i] !== 0) continue;
+      if ((!g.explored[i] && !this.xray) || g.cells[i] !== 0) continue;
       const cx = i % g.w, cy = (i / g.w) | 0;
       const l = Math.min(1, w.light.raw[i]);
       const hive = g.dugAt[i] >= 0;
@@ -60,6 +62,27 @@ export class WarMap {
       x.lineTo(px + Math.sin(p.yaw + 2.5) * 5, py + Math.cos(p.yaw + 2.5) * 5);
       x.lineTo(px + Math.sin(p.yaw - 2.5) * 5, py + Math.cos(p.yaw - 2.5) * 5);
       x.fill();
+    }
+    if (this.xray) {
+      const sw = w.swarm;
+      x.fillStyle = 'rgba(255,60,40,0.8)';
+      for (let i = 0; i < sw.count; i += 2) if (sw.alive[i]) {
+        const [px, py] = P(sw.x[i], sw.z[i]);
+        x.fillRect(px, py, 1.5, 1.5);
+      }
+      const f = w.finale;
+      if (f) {
+        const [tx, ty] = P(f.truck.x, f.truck.z);
+        x.fillStyle = '#ff0';
+        x.fillRect(tx - 4, ty - 4, 8, 8);
+        if (f.queen.alive) {
+          const [qx, qy] = P(f.queen.x, f.queen.z);
+          x.fillStyle = '#f0f';
+          x.beginPath();
+          x.arc(qx, qy, 7, 0, 6.3);
+          x.fill();
+        }
+      }
     }
     x.fillStyle = '#888';
     x.font = '12px monospace';

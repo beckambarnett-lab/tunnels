@@ -71,7 +71,7 @@ export function applyCamp(w: World, s: ReturnType<typeof campState>) {
 }
 
 // ---------- players ----------
-const PKEYS = ['x', 'z', 'yaw', 'pitch', 'alive', 'downed', 'downTimer', 'overwhelm', 'touching', 'firing', 'lastFired', 'crouch', 'slots', 'sel', 'carrying', 'layingWire', 'tethered', 'repairT', 'aim', 'eye', 'carriedT', 'reviveT', 'hive', 'will', 'ritual', 'hiveX', 'hiveZ', 'connected', 'ritualStage', 'order', 'reviveT', 'walkieTalking', 'loudAt', 'peerId', 'suit', 'riding'] as const;
+const PKEYS = ['x', 'z', 'yaw', 'pitch', 'alive', 'downed', 'downTimer', 'overwhelm', 'touching', 'firing', 'lastFired', 'crouch', 'slots', 'sel', 'carrying', 'layingWire', 'tethered', 'repairT', 'aim', 'eye', 'carriedT', 'reviveT', 'hive', 'will', 'ritual', 'hiveX', 'hiveZ', 'connected', 'ritualStage', 'order', 'reviveT', 'walkieTalking', 'loudAt', 'peerId', 'suit', 'riding', 'spraying'] as const;
 export function playerState(p: SimPlayer) {
   const o: any = { id: p.id, fl: [p.flashlight.on, p.flashlight.intensity] };
   for (const k of PKEYS) o[k] = (p as any)[k];

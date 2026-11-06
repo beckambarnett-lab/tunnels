@@ -40,9 +40,9 @@ export function exportFile(w: World, pristine: Uint8Array) {
   a.click();
 }
 
-export function readBrowserSave(): any | null {
+export function readBrowserSave(key = KEY): any | null {
   try {
-    const s = localStorage.getItem(KEY);
+    const s = localStorage.getItem(key);
     return s ? JSON.parse(s) : null;
   } catch {
     return null;

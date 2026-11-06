@@ -67,6 +67,8 @@ export class Synth {
 
   listener(x: number, y: number, z: number, fx: number, fy: number, fz: number) {
     if (!this.ctx) return;
+    this.lx = x;
+    this.lz = z;
     const l = this.ctx.listener as any;
     if (l.positionX) {
       l.positionX.value = x;
@@ -344,6 +346,30 @@ export class Synth {
     o.start(t);
     o.stop(t + 0.24);
   }
+
+  private jingleT: any = null;
+  /** The cheerful Xterminator's jingle on the van radio (act 1, until the power dies). */
+  jingle() {
+    if (!this.ctx || this.jingleT) return;
+    const notes = [523, 659, 784, 659, 698, 880, 784, 0, 523, 587, 659, 784, 1046, 0, 0, 0];
+    let k = 0;
+    const play = () => {
+      const f = notes[k++ % notes.length];
+      if (f) this.tone(this.lx, 1, this.lz + 4, f, 0.18, 0.05, 'square');
+    };
+    this.jingleT = setInterval(play, 190);
+  }
+  jingleStop() {
+    if (this.jingleT) clearInterval(this.jingleT);
+    this.jingleT = null;
+  }
+  /** First light: a slow major chord. */
+  sunrise() {
+    if (!this.ctx) return;
+    for (const f of [261.6, 329.6, 392, 523.3]) this.tone(this.lx, 3, this.lz, f, 6, 0.08, 'sine');
+  }
+  private lx = 0;
+  private lz = 0;
 
   setDrone(level: number) {
     if (!this.ctx) return;

@@ -21,7 +21,9 @@ import type { Role } from '../sim/world';
 import { NetSession } from '../net/session';
 import { PlayerAvatars } from '../render/avatars';
 import { Voice } from '../net/voice';
-import { saveToBrowser, exportFile, readBrowserSave, applySave } from '../net/save';
+import { saveToBrowser, exportFile, readBrowserSave, applySave, makeSave } from '../net/save';
+import { NightMesh } from '../render/nightMesh';
+import { ZONE_NAMES, NightLayout } from '../sim/night';
 import { Panel } from '../debug/panel';
 
 export interface GameOptions {
@@ -36,7 +38,8 @@ export interface GameOptions {
   snapshot?: any;
   localId?: string;
   room?: string;
-  load?: boolean;
+  load?: boolean | string;
+  night?: boolean;
 }
 
 export class Game {
@@ -63,6 +66,9 @@ export class Game {
   localId = 'local';
   voice: Voice | null = null;
   pristine: Uint8Array;
+  night: NightMesh | null = null;
+  private lastAct = 0;
+  private actCardT = 0;
   toast = '';
   toastT = 0;
   private called = new Set<string>();
@@ -98,6 +104,7 @@ export class Game {
       bugs: opts.bugs,
       layout: opts.bench ? benchLayout() : undefined,
       role,
+      night: !!opts.night && !opts.bench,
     });
     const L = this.world.layout;
     const pristine = this.world.grid.cells.slice();
@@ -111,7 +118,7 @@ export class Game {
     } else {
       this.localId = role === 'host' ? 'host' : 'local';
       // the prototype nest plays as act 2 (the base: probes against a strong position) unless ?act=N
-      this.world.director.act = opts.act ?? 2;
+      this.world.director.act = this.world.run ? 1 : opts.act ?? 2;
       // a breather to set up camp before the hive starts pushing
       if (!opts.bench) this.world.director.startRelaxed(45);
       this.me = this.world.addPlayer(this.localId, L.start.x, L.start.z);
@@ -123,7 +130,7 @@ export class Game {
       if (role === 'host') this.session!.attach(this.world, pristine);
       // ?load: continue from the browser save (marks the run: bad ending only)
       if (opts.load) {
-        const sv = readBrowserSave();
+        const sv = readBrowserSave(opts.load === 'checkpoint' ? 'tunnels-checkpoint' : undefined);
         if (sv) {
           applySave(this.world, sv);
           this.me = this.world.players.find((p) => p.id === this.localId) ?? this.me;
@@ -131,8 +138,17 @@ export class Game {
       }
     }
     this.pristine = pristine;
+    // checkpoints at milestone spaces and oil rigs (host / solo)
+    if (this.world.run && role !== 'client')
+      this.world.run.onCheckpoint = (name) => {
+        try {
+          localStorage.setItem('tunnels-checkpoint', JSON.stringify(makeSave(this.world, this.pristine)));
+        } catch {}
+        this.toast = `Checkpoint: ${name}`;
+        this.toastT = 3;
+      };
 
-    this.terrain = new TerrainMesh(this.world.grid, opts.seed);
+    this.terrain = new TerrainMesh(this.world.grid, opts.seed, this.world.run ? (this.world.layout as NightLayout).zone : null);
     this.scene.add(this.terrain.group);
     this.bugs = new BugMesh(SWARM.maxBugs);
     this.scene.add(this.bugs.mesh);
@@ -141,6 +157,7 @@ export class Game {
     this.debug = new DebugViews(this.scene, this.world);
     this.camp = new CampMesh(this.scene, this.world, this.camera);
     this.avatars = new PlayerAvatars(this.scene, this.world, this.localId);
+    this.night = this.world.run ? new NightMesh(this.scene, this.world) : null;
     // proximity voice: online play only (WebRTC media); starts on the first click (mic permission)
     if (this.session?.t.kind === 'webrtc') {
       this.voice = new Voice();
@@ -168,7 +185,10 @@ export class Game {
     };
     if (opts.bench) this.panel.state.god = true;
     this.panel.refresh();
-    canvas.addEventListener('mousedown', () => this.synth.start());
+    canvas.addEventListener('mousedown', () => {
+      this.synth.start();
+      if (this.world.run?.powerOn) this.synth.jingle();
+    });
     addEventListener('keydown', () => this.synth.start(), { once: true });
     this.wireEvents();
     (window as any).__tunnels = { game: this, world: this.world, session: this.session, actions: { zap, applyInput } };
@@ -207,6 +227,7 @@ export class Game {
    */
   giveStartingKit() {
     const w = this.world, p = this.me;
+    if (w.run) return this.giveNightKit();
     p.slots = [newItem('flashlight'), newItem('flamethrower'), newItem('spool')];
     p.sel = 0;
     const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper', 'lightning', 'walkie'];
@@ -219,6 +240,26 @@ export class Game {
       if (!w.grid.isOpenAt(x, z)) (x = p.x + fx * along), (z = p.z + fz * along);
       w.camp.drop(k, x, z);
     });
+  }
+
+  /** The night: you arrive with the Xterminator's kit (sprayer, generator zapper); the van stock is in the hallway. */
+  giveNightKit() {
+    const w = this.world, p = this.me;
+    const L = w.layout as NightLayout;
+    p.slots = [newItem('sprayer'), newItem('zapper'), null];
+    p.sel = 0;
+    const fl = L.marks.find((m) => m.kind === 'flashlights');
+    if (fl) for (let k = 0; k < 4; k++) w.camp.drop('flashlight', fl.x + (k % 2) * 0.3 - 0.15, fl.z + Math.floor(k / 2) * 0.3 - 0.15);
+    const stock: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'spool', 'spool', 'spool', 'splitter', 'walkie', 'motion'];
+    if ((this.opts.role ?? 'solo') === 'solo') stock.push('bugzapper');
+    stock.forEach((k, i) => {
+      let x = p.x + 2 + (i % 4) * 0.9, z = p.z - 1.2 + Math.floor(i / 4) * 0.9;
+      if (!w.grid.isOpenAt(x, z)) (x = p.x + 1), (z = p.z);
+      w.camp.drop(k, x, z);
+    });
+    const lg = L.marks.find((m) => m.kind === 'lightning');
+    if (lg) w.camp.drop('lightning', lg.x, lg.z);
+    p.yaw = Math.PI / 2;
   }
 
   setupBench() {
@@ -250,6 +291,7 @@ export class Game {
       drop: live && i.hit('KeyQ'),
       repair: live && i.down('KeyR'),
       stomp: live && i.hit('Space'),
+      dig: live && i.down('KeyX'),
       slot: live ? slot : -1,
       scroll: live ? i.mouse.wheel : 0,
       aim: [f.x, f.y, f.z],
@@ -264,6 +306,13 @@ export class Game {
     ev.on('harvest', (e) => this.synth.noiseBurst(e.x, 0.3, e.z, 0.3, 500, 1, 0.5));
     ev.on('stomp', (e) => this.synth.thump(e.x, 0.1, e.z, 90, 0.5));
     ev.on('crank', () => this.synth.noiseBurst(this.me.x, 1, this.me.z, 0.05, 2000, 6, 0.25));
+    ev.on('radio', () => this.synth.noiseBurst(this.me.x, 1.5, this.me.z, 0.25, 2000, 0.6, 0.25));
+    ev.on('powerDies', () => {
+      this.synth.jingleStop();
+      this.synth.thump(this.me.x, 2, this.me.z, 45, 0.9);
+    });
+    ev.on('sunrise', () => this.synth.sunrise());
+    ev.on('eggBurned', (e) => this.synth.squeal(e.x, e.z));
     ev.on('generatorOff', (e) => this.synth.thump(e.x, 0.5, e.z, 40, 0.5));
     const tell = (e: any) => {
       this.synth.tell(e.intent, e.x, e.z, this.me.x, this.me.z);
@@ -304,6 +353,42 @@ export class Game {
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
+  }
+
+  updateNightHud(dt: number) {
+    const w = this.world, r = w.run!, me = this.me;
+    const ACTS = ['', 'The Job', 'The Base', 'The Bubble', 'The Junkyard', 'Sunrise'];
+    if (r.act !== this.lastAct) {
+      this.lastAct = r.act;
+      this.actCardT = 4;
+      if (r.act >= 2) this.synth.jingleStop();
+    }
+    this.actCardT -= dt;
+    const zone = ZONE_NAMES[(w.layout as NightLayout).zone[w.grid.cellAt(me.x, me.z)] ?? 0];
+    let goal = '';
+    if (r.act === 1) {
+      const hasLight = w.players.some((p) => p.slots.some((s) => s?.kind === 'flashlight'));
+      goal = r.powerOn ? `The job: zap the bugs in the house with the generator zapper (${Math.min(r.jobKills, r.jobTarget)}/${r.jobTarget}). ${hasLight ? '' : 'Find the flashlights (bathroom cupboard).'}` : 'The basement floor has opened. Go down.';
+    } else if (r.act === 2) goal = 'Set up a base at the nest mouth: generator, lamps, cable. Then push on.';
+    else if (r.act === 3) goal = r.used.size ? 'Carry the camp deeper. Oil rigs refuel you.' : 'The intersection: strap the big fuel tanks onto your sprayers.';
+    else if (r.act === 4) goal = r.rage < 1 ? `Find the Enlite suits (dig with X). Burn the queen's egg sacs (rage ${(r.rage * 100).toFixed(0)}%).` : 'She is coming. Get to the digging truck!';
+    const f = w.finale;
+    if (f && f.state === 'driving') {
+      const role = f.roles.get(me.id);
+      goal = `DIGGING TRUCK — ${role === 'driver' ? 'DRIVER: WASD steers toward the surface (west); hold RMB for x-ray' : role?.startsWith('gunner') ? 'GUNNER: burn what tears at the truck' : 'QUEEN-KEEPER'}${f.isKeeper(me.id) ? `  |  charge ${(f.energy * 100).toFixed(0)}%: LMB knock-aside (50%), RMB stun burst (100%)` : ''}  |  truck ${(Math.max(0, f.truck.hp) * 100).toFixed(0)}%`;
+      this.map.xray = f.roles.get(me.id) === 'driver' && this.input.mouse.right;
+    }
+    const radio = r.radio.length && w.time - r.radio[r.radio.length - 1].t < 7 ? r.radio[r.radio.length - 1].text : '';
+    this.hud.updateNight({
+      card: this.actCardT > 0 ? `ACT ${r.act} — ${ACTS[r.act]}` : '',
+      goal,
+      zone,
+      radio,
+      ending: f?.ending ?? null,
+      failed: w.runState === 'failed',
+      hasCheckpoint: !!readBrowserSave('tunnels-checkpoint'),
+    });
+    if (w.runState === 'failed' && this.input.hit('KeyC')) location.href = location.pathname + '?night&load=checkpoint';
   }
 
   /** WASD as a world-space direction (used to steer your bugs while you're in the hive). */
@@ -438,12 +523,14 @@ export class Game {
       this.lights.ambient.intensity = 1.1;
       this.lights.ambient.color.setHex(0x9fb070);
     } else this.lights.ambient.color.setHex(0x223040);
-    if (w.runState === 'failed' && this.input.hit('Enter')) location.reload();
+    if (w.runState === 'failed' && this.input.hit('Enter')) location.href = location.pathname + (w.run ? '?night' : location.search);
     this.lights.update(w.allLights(), this.localId, this.camera.position, this.time);
     this.avatars.update(this.time);
     this.fx.update(dt, w.fire, this.time);
     this.debug.update(dt);
     this.camp.update(dt, this.me);
+    this.night?.update(dt);
+    if (w.run) this.updateNightHud(dt);
     let gen: any = null, gd = 1e9;
     for (const d of w.camp.devices) {
       const dd = Math.hypot(d.x - this.me.x, d.z - this.me.z);

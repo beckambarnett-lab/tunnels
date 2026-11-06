@@ -76,7 +76,35 @@ export class Hud {
     this.hiveEl!.innerHTML = html;
     this.hiveEl!.style.display = html ? 'block' : 'none';
     this.failEl!.style.display = w.runState === 'failed' ? 'flex' : 'none';
-    if (w.runState === 'failed') this.failEl!.innerHTML = `<div class="big">THE NIGHT IS LOST</div><div>${w.failReason}</div><div class="small">Press Enter to start a new run</div>`;
+    (this as any)._reason = w.failReason;
+    if (w.runState === 'failed' && !w.run) this.failEl!.innerHTML = `<div class="big">THE NIGHT IS LOST</div><div>${w.failReason}</div><div class="small">Press Enter to start a new run</div>`;
+  }
+
+  private nightEl: HTMLElement | null = null;
+  private cardEl: HTMLElement | null = null;
+  private endEl: HTMLElement | null = null;
+  updateNight(n: { card: string; goal: string; zone: string; radio: string; ending: string | null; failed: boolean; hasCheckpoint: boolean }) {
+    if (!this.nightEl) {
+      this.nightEl = document.createElement('div');
+      this.nightEl.className = 'nighthud';
+      this.cardEl = document.createElement('div');
+      this.cardEl.className = 'actcard';
+      this.endEl = document.createElement('div');
+      this.endEl.className = 'ending';
+      this.root.append(this.nightEl, this.cardEl, this.endEl);
+    }
+    this.nightEl.innerHTML = `<div class="zone">${n.zone}</div><div class="goal">${n.goal}</div>${n.radio ? `<div class="radio">📻 ${n.radio}</div>` : ''}`;
+    this.cardEl!.textContent = n.card;
+    this.cardEl!.style.opacity = n.card ? '1' : '0';
+    if (n.ending) {
+      this.endEl!.style.display = 'flex';
+      this.endEl!.innerHTML =
+        n.ending === 'true'
+          ? '<div class="big">SUNRISE</div><div>The truck bursts out into the morning. The queen follows you into the light, and dies.</div><div class="small">The true ending: the whole night, no checkpoints.</div>'
+          : '<div class="big">SUNRISE?</div><div>The light is a glare. Your voices come out of the bugs. You have done this before.</div><div class="small">The hollow ending: this run used a checkpoint. Only a full night without one earns the real sunrise.</div>';
+    } else this.endEl!.style.display = 'none';
+    if (n.failed && this.failEl)
+      this.failEl.innerHTML = `<div class="big">THE NIGHT IS LOST</div><div>${(this as any)._reason ?? ''}</div><div class="small">Enter: restart the whole night (the true ending is still possible)${n.hasCheckpoint ? '<br>C: continue from the last checkpoint (the run can then only end badly)' : ''}</div>`;
   }
 
   private pauseEl: HTMLElement | null = null;
