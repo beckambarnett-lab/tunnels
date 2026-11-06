@@ -54,3 +54,10 @@ Not specified. **Reading:** it drops on the floor where they were devoured (deep
 ## Q14. Electrocuting the body "with the lightning gun or a live wire".
 **Reading:** a live (powered) cable with any point within 1.2 m of the body shocks it continuously; each lightning-gun hit on a body bug adds 2 s of the 10 s needed (and doesn't kill it); a powered solo bug zapper within 2 m shocks it at 6 fuel/s on top of the 150-fuel respawn cost. Fifteen or more queen-controlled bugs on the body reverse progress, and a big enough crowd breaks the body apart.
 
+## Q15. "Up through the earth toward the surface" on a flat 2D grid.
+The world is one walkable layer, so there is no literal "up".
+**Reading:** the night runs east and downward from the house; the truck escape heads back west, digging its own route, and the surface is wherever it breaks into the house's zone (first light pours down the hole and through the windows, as the GDD says). The x-ray map shows every open space and the hive's tunnels (fast lanes, full of bugs).
+
+## Q16. Night pacing and size.
+The GDD's night is 1–2 hours across hundreds of tunnel segments. **Reading for this build:** a vertical slice: every act, set piece and beat is present once, along a 9-segment main path with side loops. Act lengths come from the director curve and how fast you push, not from content volume.
+

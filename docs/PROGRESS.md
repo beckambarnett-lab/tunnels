@@ -60,6 +60,15 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - 4.8 Respawn ritual: body of 60 → into the light → electrocuted ~10 s (live cable / lightning hits / solo bug zapper) → back at low health, −150 fuel; the queen sends a tendril to break it up. Everyone in the hive = run fails (solo: unless a powered bug zapper exists, 3 min limit).
 - 4.9 Pause: Esc/P, host pauses everyone. (Save/load snapshot not done yet.)
 
+### Milestone 5 (vertical slice, built)
+- 5.1 Night layout (`src/sim/night.ts`): house → base → nest → intersection → nest → oil rig → deep nest → junkyard → queen's chamber, side loops; zones + marks + swarm pockets. Test: `tests/night.test.ts`.
+- 5.2 Run structure (`src/sim/run.ts`): acts by progress, checkpoints (autosaved to `tunnels-checkpoint`), failure screen (Enter restart / C continue from checkpoint).
+- 5.3 Act 1 house: job (8 zaps), flashlights, jingle, boss radio, power dies, basement plug opens.
+- 5.4 Fuel tanks → flamethrower, oil rigs (+350/+500), lightning gun at the intersection. (Junk mods not done.)
+- 5.5 Junkyard: Enlite suits (speed, flame range, X to dig), logo decals; queen's chamber egg sacs → rage.
+- 5.6 Finale (`src/sim/finale.ts`): truck, roles, queen chase, keeper powers, x-ray, sunrise; true / hollow endings. Test: `tests/run.test.ts`.
+- 5.7 Art/audio pass: zone palettes, jingle, radio static, sunrise chord. (No real dusk/sunrise lighting yet.)
+
 ## In progress
 - 4.10 gate: `scripts/gate4.mjs` (run against a frozen build: `npx vite build --outDir dist-gate && npx vite preview --outDir dist-gate --port 4174`, then `BASE=http://localhost:4174/ node scripts/gate4.mjs`).
 

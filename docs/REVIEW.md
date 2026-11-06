@@ -104,5 +104,40 @@ Q5–Q9 in `docs/QUESTIONS.md`: port counts (generator 2 outputs), only the held
 - Wire chewing by the M2 sabotage tendril now waits for the Sabotage counter to be learned (25 m of cable, or a 7-minute fallback), as the learning tree says.
 - Director oil-yield lever is 0.75–1.25× (not open-ended) so harvesting never beats its own cost.
 
+## Milestone 4 — Multiplayer and the hive (tag `milestone-4`)
+
+### What was built
+- **Host / join** from the title screen (or `?host=CODE` / `?join=CODE`), over BroadcastChannel for tabs on one machine or PeerJS/WebRTC online (free public signalling server). Room codes are 4 letters.
+- **Sync**: the host runs the queen, director, learning, digging, camp, fuel and health. Every machine steers the bugs locally from the host's tendrils and its own flow fields (per the GDD), corrected by quantised host keyframes 4× a second per bug. Terrain changes, camp, players, fuel and tells are streamed. A dropped player leaves their body as a downed player.
+- **Death and the hive**: downed players are lifted by a carrier group and walked to the queen (~45 s); teammates can scatter them and hold E to revive. The devoured play as the hive: a group of ~60 bugs, the queen's orders, a will meter, swarm vision where light is a glare.
+- **Respawn ritual**: gather a body of 60, force it into the light, get it electrocuted ~10 s (a live cable, lightning-gun hits, or the solo bug zapper), return at low health for 150 fuel. The queen sends a tendril to break it up. Everyone in the hive = run lost.
+- **Pause** (host pauses everyone), **save/load** (K saves, Shift+K exports, `?load` continues), **proximity voice** (online only; see below).
+
+### Playtest this
+1. Open two browser tabs. In one: *Host (tabs on this machine)*; note the room code bottom-right. In the other: type the code, *Join (this machine)*.
+2. Walk both players around; check the swarm, digs, cables and fuel match in both tabs (overlay shows `bug err` on the client).
+3. Let one player get overwhelmed in the dark (god mode off). The other should see carriers drag them toward the hive; burn the carriers and hold E on them to revive.
+4. Let the carry finish. The devoured tab switches to swarm vision with the queen's order on screen. Steer the bugs (WASD) back to a lit spot next to a live cable (or zap the body with the lightning gun) until they're rebuilt.
+5. Online: *Host online* / *Join online* on two machines (needs WebRTC to 0.peerjs.com). Click once to grant the mic: proximity voice, V for the walkie-talkie (carry one).
+
+### Decisions where the GDD was open
+Q2 (sync = local steering + keyframes), Q11 (solo hive failure), Q12 (gear drops where you're devoured), Q13 (hive control and will), Q14 (what counts as electrocution).
+
+### Deviations / not verified
+- Voice and the PeerJS transport could not be tested in the build container (no microphone, no outbound WebRTC). The code is defensive: any failure just disables voice.
+- The gate's "four friends finish two acts" was replaced by your two-tab, 10-minute stand-in.
+
+## Milestone 5 — The full night (vertical slice, no gate tag yet; see PROGRESS)
+
+### What was built
+- **The night layout**: the hand-drawn house (act 1) with its basement plug, then the base, procedural nest with side loops, the intersection, an oil rig, the deep nest, the junkyard and the queen's chamber, stitched along one main path.
+- **Run structure**: acts follow the team (the director's act curve follows); checkpoints at the flashlights, the intersection, rigs, the suits and the junkyard; failure screen with Restart or Continue from checkpoint (continuing marks the run).
+- **Act 1**: the job (zap 8 bugs; the sprayer is gloriously useless), flashlights in the bathroom cupboard, the boss on the radio, the Xterminator's jingle; then the power dies and the basement floor breaks open.
+- **The ladder**: fuel tanks turn sprayers into flamethrowers; oil rigs refuel once (+350, +500); Enlite suits make you faster with a bigger flame and let you dig (X); the lightning gun waits at the intersection.
+- **The boss**: burn her five egg sacs to fill her rage; then the truck starts.
+- **The finale**: the Enlite digging truck (fast in open tunnel, slow while digging), roles by player count, the queen stampeding after you, queen-keeper knock-aside / stun, x-ray map for the driver; bursting into the house at sunrise kills her. True ending, or the hollow ending if the run used a checkpoint.
+
+### Playtest this
+Title screen → *Play solo*. Or `?night&seed=2`. Zap 8 bugs in the house, grab a flashlight, go down when the floor opens, set up a base, push east: tanks at the crossroads, a rig, suits in the rusted junkyard, egg sacs in the chamber, then the truck: hold W/A/S/D toward the west (where you came from) and RMB for x-ray.
+
 ## Next
-Milestone 4: multiplayer and the hive.
