@@ -67,6 +67,7 @@ export class Game {
   voice: Voice | null = null;
   pristine: Uint8Array;
   night: NightMesh | null = null;
+  sun: THREE.DirectionalLight | null = null;
   private lastAct = 0;
   private actCardT = 0;
   toast = '';
@@ -158,6 +159,13 @@ export class Game {
     this.camp = new CampMesh(this.scene, this.world, this.camera);
     this.avatars = new PlayerAvatars(this.scene, this.world, this.localId);
     this.night = this.world.run ? new NightMesh(this.scene, this.world) : null;
+    if (this.night) {
+      // dusk through the windows of the house (act 1) and the sunrise at the end
+      this.sun = new THREE.DirectionalLight(0xff9a50, 0);
+      this.sun.position.set(-30, 25, 10);
+      this.sun.target.position.set(10, 0, 20);
+      this.scene.add(this.sun, this.sun.target);
+    }
     // proximity voice: online play only (WebRTC media); starts on the first click (mic permission)
     if (this.session?.t.kind === 'webrtc') {
       this.voice = new Voice();
@@ -482,7 +490,7 @@ export class Game {
       this.topCam.lookAt(me.x, 0, me.z);
       this.lights.ambient.intensity = 0.9;
       this.scene.fog = null;
-    } else {
+    } else if (this.world.finale?.state !== 'won') {
       if (!this.me.hive) this.lights.ambient.intensity = 0.06;
       if (!this.scene.fog) this.scene.fog = new THREE.FogExp2(0x000000, 0.045);
     }
@@ -531,7 +539,19 @@ export class Game {
     this.debug.update(dt);
     this.camp.update(dt, this.me);
     this.night?.update(dt);
-    if (w.run) this.updateNightHud(dt);
+    if (w.run) {
+      this.updateNightHud(dt);
+      const inHouse = (w.layout as NightLayout).zone[w.grid.cellAt(this.me.x, this.me.z)] === 1;
+      const sunrise = w.finale?.state === 'won';
+      const target = sunrise ? 3 : w.run.powerOn && inHouse ? 0.7 : 0;
+      this.sun!.intensity += (target - this.sun!.intensity) * Math.min(1, dt * (sunrise ? 0.5 : 2));
+      this.sun!.color.setHex(sunrise ? 0xffd8a0 : 0xff9a50);
+      if (sunrise) {
+        this.lights.ambient.intensity = Math.min(1.2, this.lights.ambient.intensity + dt * 0.2);
+        this.lights.ambient.color.setHex(0xffe0b0);
+        this.scene.fog = null;
+      }
+    }
     let gen: any = null, gd = 1e9;
     for (const d of w.camp.devices) {
       const dd = Math.hypot(d.x - this.me.x, d.z - this.me.z);

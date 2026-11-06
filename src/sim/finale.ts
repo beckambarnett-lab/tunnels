@@ -2,7 +2,7 @@ import { CELL } from '../config';
 import { Z } from './night';
 import type { World, SimPlayer } from './world';
 
-export const TRUCK = { radius: 1.1, openSpeed: 7, digSpeed: 1.3, turnRate: 2.2, bugDamage: 0.0035, queenDamage: 0.12, hp: 1 };
+export const TRUCK = { radius: 1.1, openSpeed: 4.5, digSpeed: 1.3, turnRate: 2.2, bugDamage: 0.0035, queenDamage: 0.12, hp: 1 };
 export const QBOSS = { speed: 5.2, digSpeed: 2.6, reach: 2.6, stunTime: 3, knockTime: 1.5, knockDist: 6, chargeRate: 0.1 };
 
 export type Role = 'driver' | 'gunnerL' | 'gunnerR' | 'keeper';
