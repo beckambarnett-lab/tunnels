@@ -43,6 +43,17 @@ export class Hud {
     for (let i = 0; i < 90; i++) this.crawlers.push({ e: Math.floor(Math.random() * 4), t: Math.random(), s: 0.6 + Math.random() * 0.8, a: Math.random() * 6 });
   }
 
+  private pauseEl: HTMLElement | null = null;
+  setPause(on: boolean, client: boolean) {
+    if (!this.pauseEl) {
+      this.pauseEl = document.createElement('div');
+      this.pauseEl.className = 'pause';
+      this.root.appendChild(this.pauseEl);
+    }
+    this.pauseEl.style.display = on ? 'flex' : 'none';
+    this.pauseEl.textContent = client ? 'PAUSED BY HOST' : 'PAUSED — Esc or P to resume';
+  }
+
   /** Wrist fuel gauge, slot icons, interaction prompt. */
   updateCamp(w: World, p: SimPlayer, prompt: string) {
     const f = w.fuel;

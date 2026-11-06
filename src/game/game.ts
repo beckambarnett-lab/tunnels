@@ -17,6 +17,9 @@ import { CampMesh } from '../render/campMesh';
 import { WarMap } from './map';
 import { applyInput, findTarget, promptFor, PlayerInput, zap } from '../sim/actions';
 import { newItem } from '../sim/camp';
+import type { Role } from '../sim/world';
+import { NetSession } from '../net/session';
+import { PlayerAvatars } from '../render/avatars';
 import { Panel } from '../debug/panel';
 
 export interface GameOptions {
@@ -26,6 +29,11 @@ export interface GameOptions {
   res?: number;
   auto?: boolean;
   act?: number;
+  role?: Role;
+  session?: NetSession;
+  snapshot?: any;
+  localId?: string;
+  room?: string;
 }
 
 export class Game {
@@ -47,6 +55,9 @@ export class Game {
   overlay = new Overlay();
   panel: Panel;
   camp: CampMesh;
+  avatars: PlayerAvatars;
+  session: NetSession | null = null;
+  localId = 'local';
   map = new WarMap();
   last = 0;
   time = 0;
@@ -72,22 +83,36 @@ export class Game {
     this.topCam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 200);
     addEventListener('resize', () => this.resize());
 
+    const role = opts.role ?? 'solo';
     this.world = new World({
       seed: opts.seed,
       useWorker: true,
       bugs: opts.bugs,
       layout: opts.bench ? benchLayout() : undefined,
+      role,
     });
     const L = this.world.layout;
-    // the prototype nest plays as act 2 (the base: probes against a strong position) unless ?act=N
-    this.world.director.act = opts.act ?? 2;
-    // a breather to set up camp before the hive starts pushing
-    if (!opts.bench) this.world.director.startRelaxed(45);
-    this.me = this.world.addPlayer('local', L.start.x, L.start.z);
-    if (opts.bench) this.setupBench();
-    else {
-      this.me.yaw = this.faceOpen(L.start.x, L.start.z);
-      this.giveStartingKit();
+    const pristine = this.world.grid.cells.slice();
+    this.session = opts.session ?? null;
+    if (role === 'client') {
+      // mirror the host's world, then find ourselves in it
+      this.session!.applyWelcome(this.world, opts.snapshot);
+      this.session!.attach(this.world, null);
+      this.me = this.world.players.find((p) => p.id === opts.localId)!;
+      this.localId = opts.localId!;
+    } else {
+      this.localId = role === 'host' ? 'host' : 'local';
+      // the prototype nest plays as act 2 (the base: probes against a strong position) unless ?act=N
+      this.world.director.act = opts.act ?? 2;
+      // a breather to set up camp before the hive starts pushing
+      if (!opts.bench) this.world.director.startRelaxed(45);
+      this.me = this.world.addPlayer(this.localId, L.start.x, L.start.z);
+      if (opts.bench) this.setupBench();
+      else {
+        this.me.yaw = this.faceOpen(L.start.x, L.start.z);
+        this.giveStartingKit();
+      }
+      if (role === 'host') this.session!.attach(this.world, pristine);
     }
 
     this.terrain = new TerrainMesh(this.world.grid, opts.seed);
@@ -98,6 +123,13 @@ export class Game {
     this.fx = new Fx(this.scene, this.world);
     this.debug = new DebugViews(this.scene, this.world);
     this.camp = new CampMesh(this.scene, this.world, this.camera);
+    this.avatars = new PlayerAvatars(this.scene, this.world, this.localId);
+    if (opts.room) {
+      const r = document.createElement('div');
+      r.className = 'room';
+      r.textContent = `${role === 'host' ? 'Hosting' : 'In'} room ${opts.room}${role === 'host' ? ' — friends join with this code' : ''}`;
+      document.getElementById('hud')!.appendChild(r);
+    }
     this.input = new Input(canvas);
     this.ctrl = new PlayerController(this.me, this.world.grid, this.camera);
     this.hud = new Hud();
@@ -113,7 +145,7 @@ export class Game {
     canvas.addEventListener('mousedown', () => this.synth.start());
     addEventListener('keydown', () => this.synth.start(), { once: true });
     this.wireEvents();
-    (window as any).__tunnels = { game: this, world: this.world, actions: { zap, applyInput } };
+    (window as any).__tunnels = { game: this, world: this.world, session: this.session, actions: { zap, applyInput } };
   }
 
   /** Pick the yaw that looks down the longest open line from a point. */
@@ -246,6 +278,24 @@ export class Game {
     requestAnimationFrame(loop);
   }
 
+  /** WASD as a world-space direction (used to steer your bugs while you're in the hive). */
+  hiveMove(fx: number, fz: number): [number, number] {
+    const i = this.input;
+    let x = 0, z = 0;
+    if (i.down('KeyW')) (x += fx), (z += fz);
+    if (i.down('KeyS')) (x -= fx), (z -= fz);
+    if (i.down('KeyD')) (x -= fz), (z += fx);
+    if (i.down('KeyA')) (x += fz), (z -= fx);
+    const l = Math.hypot(x, z) || 1;
+    return [x / l, z / l];
+  }
+
+  /** The host pauses everyone (GDD); solo pauses itself; clients can't. */
+  togglePause() {
+    if (this.session && !this.session.isHost) return;
+    this.world.paused = !this.world.paused;
+  }
+
   handleKeys() {
     const i = this.input;
     if (i.hit('KeyV')) this.panel.cycleView();
@@ -273,12 +323,24 @@ export class Game {
     else this.ctrl.update(dt, this.input, false);
     if (this.opts.auto) this.autopilot(dt);
     this.ctrl.speedMul = me.carrying ? 0.6 : 1;
-    applyInput(this.world, me, this.buildInput(locked), dt);
-    this.synth.flame(me.firing);
+    const inp = this.buildInput(locked);
+    const sess = this.session;
+    if (sess && !sess.isHost) {
+      // a client sends its input and pose; the host applies the actions
+      const fx = Math.sin(me.yaw), fz = Math.cos(me.yaw);
+      sess.clientSend(inp, { x: me.x, z: me.z, yaw: me.yaw, pitch: me.pitch, crouch: me.crouch, move: this.hiveMove(fx, fz) });
+    } else {
+      me.hiveMove = this.hiveMove(Math.sin(me.yaw), Math.cos(me.yaw));
+      applyInput(this.world, me, inp, dt);
+      sess?.hostApplyInputs(dt);
+    }
+    this.synth.flame(this.world.players.some((p) => p.firing && Math.hypot(p.x - me.x, p.z - me.z) < 3));
     if (this.panel.state.god) me.overwhelm = 0;
+    if (this.input.hit('Escape') || this.input.hit('KeyP')) this.togglePause();
 
     const s0 = performance.now();
     this.world.step(dt);
+    if (sess?.isHost) sess.hostBroadcast(dt);
     const simMs = performance.now() - s0;
     this.syncRender(dt);
     const r0 = performance.now();
@@ -301,6 +363,7 @@ export class Game {
     this.hud.update(me, this.time, { locked: locked || this.opts.bench });
     this.hud.updateCamp(this.world, me, promptFor(this.world, me, findTarget(this.world, me)));
     this.map.draw(this.world, me.id, this.time);
+    this.hud.setPause(this.world.paused, !!this.session && !this.session.isHost);
     this.updateOverlay(dt, simMs);
     if (this.bench) this.benchTick(dtMs, simMs);
     this.input.endFrame();
@@ -312,7 +375,8 @@ export class Game {
     const changed = w.grid.drainChanges();
     if (changed.length) this.terrain.onCellsChanged(changed);
     this.bugs.update(w.swarm, this.time);
-    this.lights.update(w.allLights(), 'local', this.camera.position, this.time);
+    this.lights.update(w.allLights(), this.localId, this.camera.position, this.time);
+    this.avatars.update(this.time);
     this.fx.update(dt, w.fire, this.time);
     this.debug.update(dt);
     this.camp.update(dt, this.me);
@@ -334,7 +398,7 @@ export class Game {
       cx += sw.x[j];
       cz += sw.z[j];
     });
-    const q = w.queen;
+    const q: any = w.queen ?? (w as any).remoteQueen;
     const silent = !!q && w.time < q.silenceUntil;
     this.synth.chitter(n, n ? cx / n : cam.x, n ? cz / n : cam.z, dt, silent);
     this.synth.setDrone(silent ? 0 : 0.05);
@@ -353,11 +417,12 @@ export class Game {
       `bugs ${sw.active} / target ${w.targetBugs}  drawn ${this.bugs.drawn}  sim'd ${st.simulated}`,
       `states  mass ${st.mass}  strike ${st.strike}  flow ${st.flow}  burn ${st.burn}  under ${st.under}  dig ${st.digging}  inLight ${st.inLight}`,
       `sim ${simMs.toFixed(2)} ms (light ${tm.light.toFixed(2)} vis ${tm.vis.toFixed(2)} swarm ${tm.swarm.toFixed(2)} fire ${tm.fire.toFixed(2)})  render ${this.renderMs.toFixed(2)} ms`,
-      `fields ${w.fields.fields.size}  builds ${w.fields.stats.builds}  worker ${w.fields.stats.avgMs.toFixed(1)} ms  tendrils ${w.tendrils.size}  queen ${w.queen?.phase ?? '-'}`,
+      `fields ${w.fields.fields.size}  builds ${w.fields.stats.builds}  worker ${w.fields.stats.avgMs.toFixed(1)} ms  tendrils ${w.tendrils.size}  players ${w.players.length}`,
+      ...(this.session ? [`net ${this.session.isHost ? 'host' : 'client'} (${this.session.t.kind}) room ${this.session.t.room}  peers ${this.session.isHost ? this.session.peers.size : 1}  ${this.session.isHost ? '' : `bug err ${this.session.stats.lastMeanErr.toFixed(3)} m (max ${this.session.stats.maxMeanErr.toFixed(3)})  snaps ${this.session.stats.snaps}`}`] : []),
       `calls ${this.renderer.info.render.calls}  tris ${(this.renderer.info.render.triangles / 1000).toFixed(0)}k  terrain rebuilds ${this.terrain.rebuilds}`,
       `overwhelm ${(this.me.overwhelm * 100).toFixed(0)}%  touching ${this.me.touching}${this.panel.state.god ? '  [god]' : ''}  fuel ${w.fuel.value.toFixed(1)}`,
       `director ${w.director.state} (act ${w.director.act})  intensity ${w.director.team.toFixed(2)}  budget ${w.director.budget.toFixed(2)}  breaches ${w.breachAllowed ? 'on' : 'off'}`,
-      `queen intent ${w.queen?.intent ?? '-'}${w.queen?.forced ? ' [forced]' : ''}  top: ${Object.entries(w.queen?.scores ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(', ')}`,
+      `queen intent ${(w.queen ?? (w as any).remoteQueen)?.intent ?? '-'}${w.queen?.forced ? ' [forced]' : ''}  top: ${Object.entries((w.queen ?? (w as any).remoteQueen)?.scores ?? {}).sort((a: any, b: any) => b[1] - a[1]).slice(0, 3).map(([k, v]: any) => `${k} ${v.toFixed(1)}`).join(', ')}`,
       `belief ${Object.entries(w.light.belief).map(([k, v]) => `${k} ${v.toFixed(2)}`).join('  ')}`,
       `unlocked ${[...w.learning.unlocked].join(', ') || '-'}`,
       `last tell: ${this.lastTell}`,
