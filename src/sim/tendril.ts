@@ -22,6 +22,10 @@ export interface Tendril {
   speedMul: number;
   braveness: number; // light tolerance multiplier (siege raises it)
   holdDist: number; // massing tendrils wait this far (m) from the goal point until they strike
+  sepMul: number; // separation multiplier (spreading out against fire)
+  aliMul: number; // alignment multiplier (conceal: slightly too organised)
+  probeAmp: number; // scouts tap into the light and retreat (tolerance oscillation)
+  attackDevice: number | null; // fixture this tendril attacks (siege, generator sabotage)
   targetId?: string;
   born: number;
   modeSince: number;
@@ -43,6 +47,10 @@ export function makeTendril(over: Partial<Tendril> & { params: FieldParams }): T
     speedMul: 1,
     braveness: 1,
     holdDist: 3.5,
+    sepMul: 1,
+    aliMul: 1,
+    probeAmp: 0,
+    attackDevice: null,
     born: 0,
     modeSince: 0,
     ...over,

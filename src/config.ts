@@ -126,3 +126,47 @@ export const CAMP = {
   bodyRadius: 1.6, // E collects all bodies within this
   motionRange: 5,
 };
+
+// Queen, learning, director (M3)
+export const QUEEN = {
+  thinkInterval: 1.0, // GDD: scores intents about once a second
+  minCommit: 8, // s an intent is kept at least
+  maxCommit: 25,
+  senseRange: 14, // m: the queen only knows what her bugs sense (bugs within this of the event)
+  minTendril: 20, // GDD: 20 to 200 bugs
+  maxTendril: 200,
+  assaultSilence: 3, // s of nest-wide silence before an assault (the tell)
+  siegeBraveryRate: 0.15, // braveness gained per second of siege: the ring grows bolder
+  siegeMaxBravery: 7, // enough to rush an electric lamp's fixture
+  fixtureDamagePerBug: 0.06, // hp/s per attacking bug (fixture hp 1)
+};
+export const BELIEF = { touchDrop: 0.02, lightningRise: 0.05, floor: 0.1, lightningRadius: 5, touchCooldown: 3, typeCooldown: 2 };
+export const LEARN = {
+  // habit thresholds (GDD learning tree)
+  touchLight: 25, // electric touches without burning -> Testing the light
+  sameSpotCamps: 2, // camps set up in the same kind of spot -> Flanking
+  backToWallSecs: 25, // seconds a player stands with their back to a wall -> Breaching
+  longWireM: 25, // total cable laid -> Sabotage (cables); +3 cuts -> generator
+  flameSecs: 20, // seconds of flamethrower -> Spreading out + Baiting
+  harvestBodies: 10, // bodies harvested -> Dragging the dead
+  motionTriggers: 8, // motion lamp switch-ons -> Triggering them from range
+  playerDigCells: 20, // cells dug by Enlite suits -> Taking over tunnels
+  fuelLowFrac: 0.3, // -> Dark rush
+  // time-based fallback unlocks (fairness: keep pace with strong teams), minutes of run time
+  fallbackMin: { testLight: 6, flank: 8, breach: 10, sabotage: 7, sabotageGenerator: 14, spreadOut: 12, bait: 12, dragDead: 15, triggerMotion: 15, takeOver: 30, darkRush: 40 },
+};
+export const DIRECTOR = {
+  peakThreshold: 0.75,
+  calmThreshold: 0.25,
+  sustainMin: 3, // GDD: 3-5 s
+  sustainMax: 5,
+  decayPerSec: 0.06,
+  // slow curve per act (GDD): relax seconds, peak ceiling (budget 0..1, max tendril size)
+  acts: {
+    1: { relax: 90, budget: 0.25, maxTendril: 40 },
+    2: { relax: 75, budget: 0.5, maxTendril: 80 },
+    3: { relax: 30, budget: 0.8, maxTendril: 150 },
+    4: { relax: 15, budget: 1.0, maxTendril: 200 },
+    5: { relax: 0, budget: 1.0, maxTendril: 200 },
+  } as Record<number, { relax: number; budget: number; maxTendril: number }>,
+};

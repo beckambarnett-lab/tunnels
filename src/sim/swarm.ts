@@ -21,6 +21,8 @@ export interface SwarmContext {
   events: Events;
   /** Director lever: may breaches open at all right now? */
   breachAllowed: boolean;
+  /** a bug touched electric light without burning (belief drops) */
+  onTouch?: (i: number, kindIndex: number) => void;
 }
 
 /**
@@ -183,7 +185,11 @@ export class Swarm {
       let speed = SWARM.darkSpeed * (t ? t.speedMul : 0.5);
       const striking = !!t && t.mode === 'strike';
       let tol = striking ? SWARM.strikeTolerance : SWARM.tolerance;
-      if (t) tol *= t.braveness;
+      if (t) {
+        tol *= t.braveness;
+        // scouts tap into the light and retreat
+        if (t.probeAmp > 0) tol *= 1 + t.probeAmp * Math.max(0, Math.sin(this.phase[i] * 7 + ctx.time * 1.3));
+      }
       let digging = false;
 
       if (next) {
@@ -271,6 +277,7 @@ export class Swarm {
 
       let ax = 0, az = 0;
       let state = striking ? STRIKE : FLOW;
+      if (this.state[i] === CARRY && t?.mode === 'retreat') state = CARRY; // dragging a body into the dark
       // massing tendrils wait in the dark at a stand-off distance until the queen strikes
       if (t && t.mode === 'mass' && !layer && t.holdDist > 0) {
         const ox = t.gx - px, oz = t.gz - pz;
@@ -310,11 +317,18 @@ export class Swarm {
             st.inLight++;
             state = MASS;
           }
+          // touching electric light without burning wears down belief in that light type
+          if (ctx.onTouch && e > SWARM.tolerance) {
+            const c = g.cellAt(px, pz);
+            if (light.kindAt[c] && light.fire[c] < 0.05) ctx.onTouch(i, light.kindAt[c]);
+          }
         }
       }
 
       // ---- boids ----
       let sx = 0, sz = 0, alx = 0, alz = 0, cx = 0, cz = 0, nn = 0;
+      const sepMul = t ? Math.sqrt(t.sepMul) : 1, sepMul2 = sepMul * sepMul;
+      const aliMul = t ? t.aliMul : 1;
       const vxi = this.vx[i], vzi = this.vz[i];
       const self = this;
       this.hash.forEachNear(px, pz, R, (j) => {
@@ -322,9 +336,9 @@ export class Swarm {
         const ox = px - self.x[j], oz = pz - self.z[j];
         const d2 = ox * ox + oz * oz;
         if (d2 > R2) return;
-        if (d2 < sepR2) {
+        if (d2 < sepR2 * sepMul2) {
           const d = Math.sqrt(d2) + 1e-4;
-          const k = (sepR - d) / sepR / d;
+          const k = (sepR * sepMul - d) / (sepR * sepMul) / d;
           sx += ox * k;
           sz += oz * k;
         }
@@ -338,8 +352,8 @@ export class Swarm {
       if (nn > 0) {
         ax += sx * SWARM.sepWeight * 6;
         az += sz * SWARM.sepWeight * 6;
-        ax += (alx / nn - vxi) * SWARM.aliWeight;
-        az += (alz / nn - vzi) * SWARM.aliWeight;
+        ax += (alx / nn - vxi) * SWARM.aliWeight * aliMul;
+        az += (alz / nn - vzi) * SWARM.aliWeight * aliMul;
         ax += (cx / nn - px) * SWARM.cohWeight;
         az += (cz / nn - pz) * SWARM.cohWeight;
       }

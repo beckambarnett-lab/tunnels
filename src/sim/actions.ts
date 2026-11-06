@@ -178,6 +178,13 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
       case 'sprayer':
         if (inp.use) p.spraying = true;
         break;
+      case 'lightning':
+        if (inp.usePressed && w.time - p.zapT > 0.6 && w.fuel.has(FUEL.lightningPerShot)) {
+          p.zapT = w.time;
+          w.fuel.drain(FUEL.lightningPerShot, 'lightning', w.time);
+          lightning(w, p, inp);
+        }
+        break;
       case 'zapper':
         if (inp.usePressed && w.time - p.zapT > CAMP.zapperCooldown) {
           p.zapT = w.time;
@@ -216,6 +223,46 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
     const b = fl!.battery! / CAMP.flashlightBattery;
     p.flashlight.intensity = b > 0.15 ? 1.25 : 0.5 + b * 5 * (Math.sin(w.time * 37) > -0.6 ? 1 : 0.2);
   }
+}
+
+/** Lightning gun (Enlite salvage): a bolt along the aim that chains through up to 5 bugs. */
+export function lightning(w: World, p: SimPlayer, inp: PlayerInput) {
+  const sw = w.swarm;
+  const [ax, , az] = inp.aim;
+  const al = Math.hypot(ax, az) || 1;
+  const dx = ax / al, dz = az / al;
+  let first = -1;
+  const pts: [number, number][] = [[p.x + dx * 0.4, p.z + dz * 0.4]];
+  for (let d = 0.5; d < 14 && first < 0; d += 0.4) {
+    const x = p.x + dx * d, z = p.z + dz * d;
+    if (!w.grid.isOpenAt(x, z)) {
+      pts.push([x, z]);
+      break;
+    }
+    sw.hash.forEachNear(x, z, 0.5, (j) => {
+      if (sw.alive[j] && !sw.layer[j] && (sw.x[j] - x) ** 2 + (sw.z[j] - z) ** 2 < 0.25) {
+        first = j;
+        return true;
+      }
+    });
+    if (first < 0 && d + 0.4 >= 14) pts.push([x, z]);
+  }
+  const hit: number[] = [];
+  let cur = first;
+  while (cur >= 0 && hit.length < 5) {
+    hit.push(cur);
+    pts.push([sw.x[cur], sw.z[cur]]);
+    let nxt = -1, nd = 2.2 * 2.2;
+    sw.hash.forEachNear(sw.x[cur], sw.z[cur], 2.2, (j) => {
+      if (!sw.alive[j] || sw.layer[j] || hit.includes(j)) return;
+      const d2 = (sw.x[j] - sw.x[cur]) ** 2 + (sw.z[j] - sw.z[cur]) ** 2;
+      if (d2 < nd) (nd = d2), (nxt = j);
+    });
+    cur = nxt;
+  }
+  for (const j of hit) sw.kill(j, 'lightning', w.events);
+  w.events.emit('lightning', { id: p.id, pts, kills: hit.length });
+  return hit.length;
 }
 
 /** Generator zapper: a short electric arc that kills a few bugs in front and leaves their bodies. */

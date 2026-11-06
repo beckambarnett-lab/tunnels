@@ -12,6 +12,8 @@ import { Queen } from './queen';
 import { generateWorld, WorldLayout } from './worldgen';
 import { Fuel } from './fuel';
 import { Camp, Item } from './camp';
+import { Learning } from './learning';
+import { Director } from './director';
 
 export interface SimPlayer {
   id: string;
@@ -67,6 +69,9 @@ export class World {
   events = new Events();
   fuel: Fuel;
   camp: Camp;
+  learning: Learning;
+  director: Director;
+  debugBreaches = true; // debug panel switch
   tendrils = new Map<number, Tendril>();
   players: SimPlayer[] = [];
   staticLights: LightSource[] = [];
@@ -93,6 +98,8 @@ export class World {
     this.fire = new Fire();
     this.fuel = new Fuel(this.events);
     this.camp = new Camp(this);
+    this.learning = new Learning(this);
+    this.director = new Director(this);
     this.queen = opts.noQueen ? null : new Queen(this);
     this.targetBugs = opts.bugs ?? SWARM.defaultBugs;
     this.events.on('breach', (e) =>
@@ -209,6 +216,10 @@ export class World {
     }
     this.timings.vis = T(t);
     t = now();
+    if (this.queen) {
+      this.director.step(dt);
+      this.learning.step(dt);
+    }
     this.queen?.update(dt);
     for (const tr of this.tendrils.values()) tr.field = this.fields.get(tr.fieldName, tr.goals, tr.params, this.time);
     this.timings.queen = T(t);
@@ -224,7 +235,8 @@ export class World {
       players: this.players.map((p) => ({ x: p.x, z: p.z, alive: p.alive && !p.downed })),
       time: this.time,
       events: this.events,
-      breachAllowed: this.breachAllowed,
+      breachAllowed: this.breachAllowed && this.debugBreaches,
+      onTouch: (i, k) => this.learning.touch(i, k),
     });
     this.timings.swarm = T(t);
     t = now();

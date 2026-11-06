@@ -37,3 +37,7 @@ GDD lists "per kill" without a number and says harvesting returns less than it c
 ## Q9. Flashlight battery life.
 Not given. **Reading:** a full charge lasts 240 s of light; recharging at a running generator costs 3 fuel for a full charge (pro rata).
 
+## Q10. How often does a "touch" lower electric belief?
+GDD: belief "drops 0.02 each time a bug touches that light type and doesn't burn". A massed swarm jostling at a lamp's edge produces hundreds of touches a minute, which would break belief (to the 0.1 floor) in seconds and make every lamp useless almost at once.
+**Reading:** each bug can teach the lesson at most once every 3 s, and each light type can lose belief at most once every 2 s. Breaking belief fully (1.0 → 0.1, 45 drops) therefore takes at least ~90 s of sustained contact; probing scouts (and "Testing the light" once unlocked) are what keep it falling. Lightning kills within 5 m restore +0.05 each.
+

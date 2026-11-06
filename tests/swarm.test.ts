@@ -37,11 +37,12 @@ describe('swarm and light', () => {
       dists.push(Math.hypot(sw.x[i] - cx, sw.z[i] - cz));
     }
     // light edge: where lamp light falls to the tolerance
-    const edge = 5 * (1 - Math.pow(SWARM.tolerance, 1 / 1.15));
+    const belief = w.light.belief.lamp;
+    const edge = 5 * (1 - Math.pow(Math.min(1, SWARM.tolerance / belief), 1 / 1.15));
     dists.sort((a, b) => a - b);
     const median = dists[(dists.length / 2) | 0];
     const nearEdge = dists.filter((d) => d < edge + 2.5).length / dists.length;
-    console.log(`alive=${alive} inLit=${inLit} edge=${edge.toFixed(2)} min=${dists[0].toFixed(2)} median=${median.toFixed(2)} nearEdge=${(nearEdge * 100).toFixed(0)}%`);
+    console.log(`belief=${belief.toFixed(2)} alive=${alive} inLit=${inLit} edge=${edge.toFixed(2)} min=${dists[0].toFixed(2)} median=${median.toFixed(2)} nearEdge=${(nearEdge * 100).toFixed(0)}%`);
     expect(alive).toBe(250);
     expect(inLit / alive).toBeLessThan(0.03); // they don't charge in
     expect(dists[0]).toBeGreaterThan(edge - 0.8); // nobody deep inside the light

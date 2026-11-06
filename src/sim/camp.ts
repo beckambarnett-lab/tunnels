@@ -59,6 +59,8 @@ export interface Device {
   powered: boolean;
   motionActive: number; // seconds left on (motion lamp)
   light: LightSource | null;
+  hp: number; // fixtures can be attacked from the dark (siege, generator sabotage)
+  broken: boolean;
 }
 export interface WirePoint {
   x: number;
@@ -175,7 +177,7 @@ export class Camp {
     if (!this.w.grid.isOpenAt(x, z)) return null;
     if (p.carrying) p.carrying = null;
     else p.slots[p.sel] = null;
-    const dev: Device = { id: nextId++, kind: it.kind as DeviceKind, item: it, x, z, yaw: p.yaw, running: false, powered: false, motionActive: 0, light: null };
+    const dev: Device = { id: nextId++, kind: it.kind as DeviceKind, item: it, x, z, yaw: p.yaw, running: false, powered: false, motionActive: 0, light: null, hp: 1, broken: false };
     if (dev.kind === 'lamp') dev.light = makeLight('lamp', { x, z, y: 1.1, radius: 5, intensity: 1, on: false, owner: 'dev' + dev.id });
     if (dev.kind === 'floodlight')
       dev.light = makeLight('floodlight', { x, z, y: 1.7, radius: 13, cone: (32 * Math.PI) / 180, intensity: 1.4, dirX: Math.sin(p.yaw), dirZ: Math.cos(p.yaw), on: false, owner: 'dev' + dev.id });
@@ -344,6 +346,27 @@ export class Camp {
     }
   }
 
+  /** Bugs attacking a fixture from the dark. At 0 hp it breaks: no light, no power through it. */
+  damage(dev: Device, amount: number) {
+    if (dev.broken) return;
+    dev.hp -= amount;
+    if (dev.hp <= 0) {
+      dev.hp = 0;
+      dev.broken = true;
+      if (dev.kind === 'generator') dev.running = false;
+      this.w.events.emit('deviceBroken', { id: dev.id, kind: dev.kind, x: dev.x, z: dev.z });
+    }
+  }
+  nearestBroken(p: SimPlayer) {
+    let best: Device | null = null, bd = CAMP.repairRadius;
+    for (const d of this.devices) {
+      if (!d.broken) continue;
+      const dd = Math.hypot(d.x - p.x, d.z - p.z);
+      if (dd < bd) (bd = dd), (best = d);
+    }
+    return best;
+  }
+
   nearestCut(p: SimPlayer): { wire: Wire; seg: number; d: number } | null {
     let best: { wire: Wire; seg: number; d: number } | null = null;
     for (const wr of this.wires)
@@ -356,6 +379,19 @@ export class Camp {
   }
   /** Hold R near a cut to repair it. */
   repair(p: SimPlayer, dt: number): boolean {
+    const br = this.nearestBroken(p);
+    if (br) {
+      p.repairT += dt;
+      if (p.repairT >= CAMP.repairTime * 1.5) {
+        p.repairT = 0;
+        br.broken = false;
+        br.hp = 1;
+        if (br.kind === 'generator') br.running = true;
+        this.w.events.emit('deviceRepaired', { id: br.id });
+        return true;
+      }
+      return false;
+    }
     const c = this.nearestCut(p);
     if (!c) {
       p.repairT = 0;
@@ -415,7 +451,7 @@ export class Camp {
     const q: Device[] = [];
     if (!this.w.fuel.out)
       for (const d of this.devices)
-        if (d.kind === 'generator' && d.running) {
+        if (d.kind === 'generator' && d.running && !d.broken) {
           d.powered = true;
           q.push(d);
         }
@@ -436,7 +472,7 @@ export class Camp {
         }
         wr.live = true;
         const o = byId.get(other);
-        if (o && !o.powered) {
+        if (o && !o.powered && !o.broken) {
           o.powered = true;
           q.push(o);
         }
@@ -456,14 +492,17 @@ export class Camp {
       }
       if (!d.light) continue;
       if (d.kind === 'motion') {
-        if (d.powered && this.bugNear(d.x, d.z, CAMP.motionRange)) d.motionActive = 3;
+        if (d.powered && this.bugNear(d.x, d.z, CAMP.motionRange)) {
+          if (d.motionActive <= 0) w.events.emit('motionOn', { id: d.id, x: d.x, z: d.z });
+          d.motionActive = 3;
+        }
         d.motionActive = Math.max(0, d.motionActive - dt);
         d.light.on = d.powered && d.motionActive > 0;
         if (d.powered) w.fuel.drain((d.light.on ? FUEL.lampPerMin : FUEL.motionLampIdlePerMin) * perMin, 'motion', w.time);
         continue;
       }
-      d.light.on = d.powered;
-      if (d.powered) w.fuel.drain((d.kind === 'lamp' ? FUEL.lampPerMin : d.kind === 'floodlight' ? FUEL.floodlightPerMin : 0) * perMin, d.kind, w.time);
+      d.light.on = d.powered && !d.broken;
+      if (d.powered && !d.broken) w.fuel.drain((d.kind === 'lamp' ? FUEL.lampPerMin : d.kind === 'floodlight' ? FUEL.floodlightPerMin : 0) * perMin, d.kind, w.time);
     }
     for (const p of w.players) if (p.layingWire != null) this.payOut(p);
     this.chewT -= dt;
@@ -517,7 +556,7 @@ export class Camp {
   }
 
   /** Points along live-or-not wires, for the queen's sabotage goals: the darkest uncut stretch. */
-  darkestWirePoint(): { x: number; z: number } | null {
+  darkestWirePoint(): { x: number; z: number; l: number } | null {
     let best: { x: number; z: number; l: number } | null = null;
     for (const wr of this.wires)
       for (let k = 0; k < wr.points.length - 1; k++) {

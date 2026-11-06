@@ -3,6 +3,8 @@ import { Grid, OPEN } from './grid';
 
 export type LightKind = 'fire' | 'burn' | 'flare' | 'flashlight' | 'lamp' | 'floodlight' | 'motion';
 export const ELECTRIC: LightKind[] = ['flashlight', 'lamp', 'floodlight', 'motion'];
+/** index into LightMap.kindAt (0 = no electric light) */
+export const ELECTRIC_INDEX: Record<string, number> = { flashlight: 1, lamp: 2, floodlight: 3, motion: 4 };
 export const isElectric = (k: LightKind) => k === 'flashlight' || k === 'lamp' || k === 'floodlight' || k === 'motion';
 
 export interface LightSource {
@@ -46,16 +48,25 @@ export function makeLight(kind: LightKind, opts: Partial<LightSource>): LightSou
 export class LightMap {
   raw: Float32Array;
   eff: Float32Array;
+  fire: Float32Array; // fire contribution (real fire burns; electric only fools)
+  kindAt: Uint8Array; // dominant electric light type per cell (ELECTRIC_INDEX)
+  private elecMax: Float32Array;
   version = 0;
   belief: Record<string, number> = { flashlight: 1, lamp: 1, floodlight: 1, motion: 1 };
   constructor(public grid: Grid) {
     this.raw = new Float32Array(grid.n);
     this.eff = new Float32Array(grid.n);
+    this.fire = new Float32Array(grid.n);
+    this.kindAt = new Uint8Array(grid.n);
+    this.elecMax = new Float32Array(grid.n);
   }
 
   rebuild(sources: LightSource[]) {
     this.raw.fill(0);
     this.eff.fill(0);
+    this.fire.fill(0);
+    this.kindAt.fill(0);
+    this.elecMax.fill(0);
     for (const s of sources) if (s.on && s.intensity > 0) this.add(s);
     this.version++;
   }
@@ -66,7 +77,9 @@ export class LightMap {
     const sx = s.x / CELL, sz = s.z / CELL;
     const scx = Math.floor(sx), scz = Math.floor(sz);
     if (!g.isOpen(scx, scz)) return; // a light inside earth lights nothing
-    const mult = isElectric(s.kind) ? this.belief[s.kind] ?? 1 : 1;
+    const elec = isElectric(s.kind);
+    const mult = elec ? this.belief[s.kind] ?? 1 : 1;
+    const ki = ELECTRIC_INDEX[s.kind] || 0;
     const omni = s.cone >= Math.PI - 1e-3;
     const cosCone = Math.cos(s.cone);
     const cosSoft = Math.cos(Math.min(Math.PI, s.cone * 1.35));
@@ -90,6 +103,12 @@ export class LightMap {
         const f = s.intensity * a * Math.pow(1 - d / r, 1.15);
         this.raw[i] += f;
         this.eff[i] += f * mult;
+        if (elec) {
+          if (f > this.elecMax[i]) {
+            this.elecMax[i] = f;
+            this.kindAt[i] = ki;
+          }
+        } else this.fire[i] += f;
       }
   }
 
