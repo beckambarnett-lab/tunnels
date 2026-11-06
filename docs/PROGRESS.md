@@ -102,7 +102,8 @@ GDD gate: "a full night plays from dusk to sunrise". Stand-in: `scripts/night.mj
 | Fuel tank → flamethrower; oil rig +350; Enlite suit | yes (checkpoints: intersection, oil rig 1, junkyard, suits) |
 | Burn 5 egg sacs → queen provoked | rage 100% |
 | Truck → sunrise → queen dies → true ending screen | yes; truck at 37% hp at worst; 0 console errors |
-| Continued from a checkpoint → hollow ending; truck stopped → run fails | Node tests |
+| Continued from a checkpoint → hollow ending; truck stopped → run fails → replay in the swarm's mind → hollow ending | Node tests |
+| Sim cost on the night map (296×104 cells, 600 bugs, act 3) | 3.1 ms/step in Node, fields built synchronously (`tests/perf-night.test.ts`) |
 
 ### Milestone 4 — PASSED (2026-11-06)
 Browser: `scripts/gate4.mjs` (two tabs on one machine over BroadcastChannel, seed 3, 500 bugs), run against a frozen build. Node: `tests/net.test.ts`, `tests/death.test.ts`, `tests/gate4-repro.test.ts`.
