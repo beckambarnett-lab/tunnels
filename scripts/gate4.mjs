@@ -16,6 +16,12 @@ collectErrors(client, errors, '[client] ');
 await client.goto(`${BASE}?join=${room}&net=local&res=0.25`);
 await client.waitForFunction(() => window.__tunnels && window.__tunnels.world.time > 0, null, { timeout: 120000 });
 const clientId = await client.evaluate(() => window.__tunnels.game.localId);
+// record death events from the start: an idle player can die naturally during the soak
+await host.evaluate((cid) => {
+  const w = window.__tunnels.world;
+  window.__deathEv = [];
+  for (const n of ['downed', 'carried', 'devoured', 'respawned']) w.events.on(n, (e) => e.id === cid && window.__deathEv.push(n));
+}, clientId);
 
 const sample = (page) =>
   page.evaluate(() => {
@@ -109,7 +115,7 @@ const death = await host.evaluate(async (cid) => {
   const t0 = w.time;
   await waitGame(120, () => p.hive);
   const devouredAfter = w.time - t0;
-  return { events: ev.slice(), devoured: p.hive, devouredAfterS: +devouredAfter.toFixed(1), target, lampOn: lamp.light.on };
+  return { events: [...new Set([...window.__deathEv, ...ev])], devoured: p.hive, devouredAfterS: +devouredAfter.toFixed(1), target, lampOn: lamp.light.on };
 }, clientId);
 console.log('death:', JSON.stringify(death));
 // the living teammate plays as a team would: keeps the camp lit and zaps the queen's bugs off the body

@@ -109,6 +109,8 @@ Browser: `scripts/gate4.mjs` (two tabs on one machine over BroadcastChannel, see
 | Respawn | the client steers its body (60 bugs) to a lit live cable while the host keeps the camp lit and zaps the queen's breakers; shocked to 100%; back in 116 s game time at 0.6 overwhelm; respawn fuel spent: 150 |
 | No console errors | 0 |
 
+Final run on the final code (`SOAK_MIN=10`): 20 samples over 601 s wall-clock / 282 s game time, mean bug difference 0.09 m (worst 0.25 m), 0 mismatches, identical terrain (12 dug cells), fuel within 0.1. The idle joined player was killed by the swarm *during* the soak, carried and devoured naturally, then completed the ritual (rebuilt after 124 s, 150 fuel). The script's "devoured" check missed it (its listener was attached after the soak); fixed so death events are recorded from the start. The previous run verified carried → devoured explicitly.
+
 Issues found and fixed on the way to passing: a downed player's flashlight kept shining (drove carriers off); carriers far from standing players ran at quarter-rate LOD; a god-mode player could still be downed within one step; hive steering aimed into walls; zero will made the ritual impossible during Relax (you now keep a quarter of the control, and the queen's pull is suspended while the body is being shocked). Gate-script fixes: lamp placement, dark-spot search, team play (keep the camp lit, defend the body, rest when will is low).
 
 ### Milestone 3 — PASSED (2026-11-06)
