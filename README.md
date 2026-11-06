@@ -2,6 +2,10 @@
 
 A 2–4 player first-person co-op horror game for the browser: the hometown crew of Xterminator's ("Bugs worst nightmare") carries a moving camp of light through an alien nest that digs, learns and waits in the dark. Design: `docs/GDD.md`.
 
+**Play in the browser:** https://beckambarnett-lab.github.io/tunnels/ (published from `main` by `.github/workflows/pages.yml`).
+
+Or run it locally:
+
 ```bash
 npm install
 npm run dev
