@@ -61,3 +61,7 @@ The world is one walkable layer, so there is no literal "up".
 ## Q16. Night pacing and size.
 The GDD's night is 1–2 hours across hundreds of tunnel segments. **Reading for this build:** a vertical slice: every act, set piece and beat is present once, along a 9-segment main path with side loops. Act lengths come from the director curve and how fast you push, not from content volume.
 
+## Q17. How hard should resisting the queen be?
+GDD: "Resisting is hard … Giving in and betraying your friends is always the easier choice." With full loss of control at zero will, the respawn ritual became impossible whenever the queen's order pointed away from the camp (her Relax-phase "Come home" lasts 30–75 s).
+**Reading:** resisting drains will at 0.09/s (light 0.05/s), obeying refills 0.1/s; at zero will your bugs go three-quarters of the way toward her goal (you keep a quarter of the control); while your body is being electrocuted her pull is suspended. In testing the ritual takes about 1–2 minutes with a teammate who keeps the camp lit and the body defended.
+
