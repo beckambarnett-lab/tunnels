@@ -12,7 +12,7 @@ function massWorld() {
   const cx = 40 * CELL, cz = 25 * CELL;
   const lamp = makeLight('lamp', { x: cx, z: cz, radius: 5, intensity: 1 });
   w.staticLights.push(lamp);
-  const t = makeTendril({ params: defaultParams(), mode: 'mass', fieldName: 'lamp', gx: cx, gz: cz });
+  const t = makeTendril({ params: defaultParams(), mode: 'mass', fieldName: 'lamp', gx: cx, gz: cz, holdDist: 0 });
   t.goals = w.goalCellsAt(cx, cz, 1);
   w.tendrils.set(t.id, t);
   for (let k = 0; k < 250; k++) {

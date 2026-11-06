@@ -1,5 +1,12 @@
-import * as THREE from 'three';
-const canvas = document.getElementById('game') as HTMLCanvasElement;
-const r = new THREE.WebGLRenderer({ canvas });
-r.setSize(innerWidth, innerHeight);
-r.render(new THREE.Scene(), new THREE.PerspectiveCamera());
+import { Game } from './game/game';
+import { SWARM } from './config';
+
+const q = new URLSearchParams(location.search);
+const opts = {
+  seed: +(q.get('seed') || 1),
+  bench: q.has('bench'),
+  bugs: +(q.get('bugs') || SWARM.defaultBugs),
+  res: q.has('res') ? +q.get('res')! : undefined,
+};
+const game = new Game(document.getElementById('game') as HTMLCanvasElement, opts);
+game.start();

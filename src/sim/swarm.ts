@@ -266,6 +266,21 @@ export class Swarm {
 
       let ax = 0, az = 0;
       let state = striking ? STRIKE : FLOW;
+      // massing tendrils wait in the dark at a stand-off distance until the queen strikes
+      if (t && t.mode === 'mass' && !layer && t.holdDist > 0) {
+        const ox = t.gx - px, oz = t.gz - pz;
+        const d2 = ox * ox + oz * oz;
+        if (d2 < t.holdDist * t.holdDist) {
+          state = MASS;
+          const d = Math.sqrt(d2) + 1e-4;
+          const back = (t.holdDist - d) / t.holdDist;
+          // drift outward a little if too close, otherwise hold
+          dx = (-ox / d) * back;
+          dz = (-oz / d) * back;
+          dl = 1;
+          speed *= 0.6;
+        }
+      }
 
       if (!layer) {
         // ---- light: hold at the edge, retreat when inside ----

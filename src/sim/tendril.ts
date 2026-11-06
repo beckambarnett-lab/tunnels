@@ -21,6 +21,7 @@ export interface Tendril {
   members: number; // current member count
   speedMul: number;
   braveness: number; // light tolerance multiplier (siege raises it)
+  holdDist: number; // massing tendrils wait this far (m) from the goal point until they strike
   targetId?: string;
   born: number;
   modeSince: number;
@@ -41,6 +42,7 @@ export function makeTendril(over: Partial<Tendril> & { params: FieldParams }): T
     members: 0,
     speedMul: 1,
     braveness: 1,
+    holdDist: 3.5,
     born: 0,
     modeSince: 0,
     ...over,
