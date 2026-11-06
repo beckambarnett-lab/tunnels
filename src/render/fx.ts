@@ -56,6 +56,8 @@ export class Fx {
     world.events.on('breach', (e) => this.burst(e.x, e.z, e.kind === 'ceiling' ? WALL_H - 0.2 : e.kind === 'floor' ? 0.05 : 1.2, 40));
     world.events.on('dig', (e) => this.burst(e.x, e.z, 0.8, 6));
     world.events.on('collapse', (e) => this.burst(e.x, e.z, 1.5, 30));
+    world.events.on('zap', (e) => this.arc(scene, e.x, e.z));
+    world.events.on('wireCut', (e) => this.burst(e.x, e.z, 0.1, 8));
   }
 
   burst(x: number, z: number, y: number, n: number) {
@@ -72,6 +74,21 @@ export class Fx {
     }
   }
 
+  arcs: { line: THREE.Line; life: number }[] = [];
+  /** Zapper arc: a jagged blue-white line for a split second. */
+  arc(scene: THREE.Scene, x: number, z: number) {
+    const p = this.world.players[0];
+    const pts: THREE.Vector3[] = [];
+    const sx = p ? p.x : x, sz = p ? p.z : z;
+    for (let k = 0; k <= 8; k++) {
+      const t = k / 8;
+      pts.push(new THREE.Vector3(sx + (x - sx) * t * 2 + (Math.random() - 0.5) * 0.25, 1.1 - t * 0.9 + (Math.random() - 0.5) * 0.2, sz + (z - sz) * t * 2 + (Math.random() - 0.5) * 0.25));
+    }
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xbfe6ff }));
+    scene.add(line);
+    this.arcs.push({ line, life: 0.12 });
+  }
+
   trickle(x: number, z: number) {
     const d = this.dirt;
     if (d.n >= this.maxDirt) return;
@@ -86,6 +103,14 @@ export class Fx {
 
   update(dt: number, fire: Fire, time: number) {
     const w = this.world, sw = w.swarm;
+    for (const a of this.arcs) {
+      a.life -= dt;
+      if (a.life <= 0) {
+        a.line.parent?.remove(a.line);
+        a.line.geometry.dispose();
+      }
+    }
+    this.arcs = this.arcs.filter((a) => a.life > 0);
     // fire particles + burning bugs
     const pos = this.fireGeo.attributes.position.array as Float32Array;
     const col = this.fireGeo.attributes.color.array as Float32Array;

@@ -32,7 +32,7 @@ export class LightRenderer {
     this.flash.shadow.camera.near = 0.2;
     this.flash.shadow.bias = -0.002;
     camera.add(this.flash);
-    this.flash.position.set(0.25, -0.25, 0);
+    this.flash.position.set(0.2, -0.22, -0.75); // in front of the held item so it does not light itself
     camera.add(this.flash.target);
     this.flash.target.position.set(0, -0.6, -5);
     for (let i = 0; i < poolSize; i++) {

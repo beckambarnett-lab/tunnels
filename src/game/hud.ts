@@ -1,4 +1,6 @@
-import type { SimPlayer } from '../sim/world';
+import type { SimPlayer, World } from '../sim/world';
+import { ITEM_NAMES } from '../sim/camp';
+import { CAMP } from '../config';
 
 /**
  * Minimal, mostly diegetic HUD. Damage shows as bugs crawling in from the screen edges
@@ -11,6 +13,9 @@ export class Hud {
   msg: HTMLElement;
   hint: HTMLElement;
   crawlers: { e: number; t: number; s: number; a: number }[] = [];
+  fuelEl: HTMLElement;
+  slotsEl: HTMLElement;
+  promptEl: HTMLElement;
   constructor() {
     this.root = document.getElementById('hud')!;
     this.canvas = document.createElement('canvas');
@@ -26,7 +31,35 @@ export class Hud {
     this.hint = document.createElement('div');
     this.hint.className = 'hint';
     this.root.appendChild(this.hint);
+    this.fuelEl = document.createElement('div');
+    this.fuelEl.className = 'wrist';
+    this.root.appendChild(this.fuelEl);
+    this.slotsEl = document.createElement('div');
+    this.slotsEl.className = 'slots';
+    this.root.appendChild(this.slotsEl);
+    this.promptEl = document.createElement('div');
+    this.promptEl.className = 'prompt';
+    this.root.appendChild(this.promptEl);
     for (let i = 0; i < 90; i++) this.crawlers.push({ e: Math.floor(Math.random() * 4), t: Math.random(), s: 0.6 + Math.random() * 0.8, a: Math.random() * 6 });
+  }
+
+  /** Wrist fuel gauge, slot icons, interaction prompt. */
+  updateCamp(w: World, p: SimPlayer, prompt: string) {
+    const f = w.fuel;
+    const pct = Math.max(0, Math.min(1, f.value / 1500));
+    this.fuelEl.innerHTML = `<div class="wl">FUEL</div><div class="wv">${Math.ceil(f.value)}</div><div class="wb"><i style="width:${(pct * 100).toFixed(1)}%"></i></div>`;
+    this.fuelEl.classList.toggle('low', f.value < 200);
+    let html = '';
+    for (let k = 0; k < 3; k++) {
+      const it = p.carrying ?? p.slots[k];
+      const name = it ? ITEM_NAMES[it.kind] : '';
+      const bat = it?.kind === 'flashlight' ? `<b style="width:${(((it.battery ?? 0) / CAMP.flashlightBattery) * 100).toFixed(0)}%"></b>` : '';
+      const on = it?.kind === 'flashlight' && it.on !== false && !p.carrying ? ' lit' : '';
+      html += `<div class="slot${k === p.sel && !p.carrying ? ' sel' : ''}${p.carrying ? ' carry' : ''}${on}"><span>${k + 1}</span>${name}${bat}</div>`;
+    }
+    this.slotsEl.innerHTML = html;
+    const extra = p.tethered ? '\nCable at full length — reel in (alternate LMB/RMB)' : '';
+    this.promptEl.textContent = (f.out ? 'FUEL OUT — the run has failed (debug: keep playing)\n' : '') + prompt + extra;
   }
 
   update(p: SimPlayer, time: number, extra: { locked: boolean }) {

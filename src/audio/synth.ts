@@ -193,6 +193,48 @@ export class Synth {
     this.flameGain.gain.setTargetAtTime(on ? 0.5 : 0, t, on ? 0.03 : 0.1);
   }
 
+  private humOsc: OscillatorNode | null = null;
+  private humGain: GainNode | null = null;
+  private humPan: PannerNode | null = null;
+  /** The generator's hum is comfort (GDD audio direction). */
+  hum(x: number, z: number, on: boolean) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    if (!this.humOsc) {
+      this.humOsc = ctx.createOscillator();
+      this.humOsc.type = 'sawtooth';
+      this.humOsc.frequency.value = 58;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 260;
+      this.humGain = ctx.createGain();
+      this.humGain.gain.value = 0;
+      this.humPan = this.positioned(x, 0.4, z, 3);
+      this.humOsc.connect(lp).connect(this.humGain).connect(this.humPan);
+      this.humOsc.start();
+    }
+    this.humPan!.positionX.value = x;
+    this.humPan!.positionZ.value = z;
+    this.humGain!.gain.setTargetAtTime(on ? 0.22 : 0, ctx.currentTime, 0.15);
+    this.humOsc.frequency.value = 58 + Math.sin(ctx.currentTime * 3) * 0.8;
+  }
+
+  zap(x: number, z: number) {
+    if (!this.ctx) return;
+    this.noiseBurst(x, 1, z, 0.18, 5000, 0.8, 0.6);
+    const ctx = this.ctx;
+    const o = ctx.createOscillator();
+    o.type = 'square';
+    o.frequency.value = 120;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g).connect(this.positioned(x, 1, z));
+    o.start(t);
+    o.stop(t + 0.22);
+  }
+
   setDrone(level: number) {
     if (!this.ctx) return;
     this.droneGain.gain.setTargetAtTime(level, this.ctx.currentTime, 0.5);

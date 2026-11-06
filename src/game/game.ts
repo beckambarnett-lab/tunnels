@@ -13,6 +13,10 @@ import { PlayerController } from './player';
 import { Hud } from './hud';
 import { Synth } from '../audio/synth';
 import { Overlay } from '../debug/overlay';
+import { CampMesh } from '../render/campMesh';
+import { WarMap } from './map';
+import { applyInput, findTarget, promptFor, PlayerInput } from '../sim/actions';
+import { newItem } from '../sim/camp';
 import { Panel } from '../debug/panel';
 
 export interface GameOptions {
@@ -41,6 +45,8 @@ export class Game {
   synth = new Synth();
   overlay = new Overlay();
   panel: Panel;
+  camp: CampMesh;
+  map = new WarMap();
   last = 0;
   time = 0;
   renderMs = 0;
@@ -71,7 +77,10 @@ export class Game {
     const L = this.world.layout;
     this.me = this.world.addPlayer('local', L.start.x, L.start.z);
     if (opts.bench) this.setupBench();
-    else this.me.yaw = this.faceOpen(L.start.x, L.start.z);
+    else {
+      this.me.yaw = this.faceOpen(L.start.x, L.start.z);
+      this.giveStartingKit();
+    }
 
     this.terrain = new TerrainMesh(this.world.grid, opts.seed);
     this.scene.add(this.terrain.group);
@@ -80,6 +89,7 @@ export class Game {
     this.lights = new LightRenderer(this.scene, this.camera);
     this.fx = new Fx(this.scene, this.world);
     this.debug = new DebugViews(this.scene, this.world);
+    this.camp = new CampMesh(this.scene, this.world, this.camera);
     this.input = new Input(canvas);
     this.ctrl = new PlayerController(this.me, this.world.grid, this.camera);
     this.hud = new Hud();
@@ -124,17 +134,68 @@ export class Game {
     this.ctrl.move(Math.sin(a) * 2 * dt, Math.cos(a) * 2 * dt);
   }
 
+  /**
+   * M2 test kit (the van and the house arrive in M5): you carry a flashlight, the flamethrower and
+   * a spool; the camp gear lies on the floor ahead of you.
+   */
+  giveStartingKit() {
+    const w = this.world, p = this.me;
+    p.slots = [newItem('flashlight'), newItem('flamethrower'), newItem('spool')];
+    p.sel = 0;
+    const kit: any[] = ['generator', 'lamp', 'lamp', 'floodlight', 'motion', 'spool', 'spool', 'spool', 'splitter', 'zapper'];
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), rx = -fz, rz = fx;
+    kit.forEach((k, i) => {
+      const along = 1.6 + Math.floor(i / 3) * 0.9, side = ((i % 3) - 1) * 0.9;
+      let x = p.x + fx * along + rx * side, z = p.z + fz * along + rz * side;
+      if (!w.grid.isOpenAt(x, z)) (x = p.x + fx * along), (z = p.z + fz * along);
+      w.camp.drop(k, x, z);
+    });
+  }
+
   setupBench() {
     const w = this.world;
     const p = this.me;
+    p.slots = [newItem('flashlight'), null, null];
     p.yaw = Math.PI; // face -z, toward the middle of the hall
     // lamps in view so the swarm masses on screen
     for (const [dx, dz] of [[-6, -9], [6, -9], [0, -16]]) w.staticLights.push(makeLight('lamp', { x: p.x + dx, z: p.z + dz, radius: 5, intensity: 1, y: 1.6 }));
     this.bench = { start: -1, samples: [], sim: [], render: [], bugs: [], done: false };
   }
 
+  buildInput(locked: boolean): PlayerInput {
+    const i = this.input;
+    const f = this.ctrl.forward(new THREE.Vector3());
+    const c = this.camera.position;
+    let slot = -1;
+    if (i.hit('Digit1')) slot = 0;
+    if (i.hit('Digit2')) slot = 1;
+    if (i.hit('Digit3')) slot = 2;
+    const live = locked && !this.opts.bench;
+    return {
+      use: (live && i.mouse.left) || this.debugFire,
+      usePressed: live && i.mousePressed.left,
+      alt: live && i.mouse.right,
+      altPressed: live && i.mousePressed.right,
+      interact: live && i.down('KeyE'),
+      interactPressed: live && i.hit('KeyE'),
+      drop: live && i.hit('KeyQ'),
+      repair: live && i.down('KeyR'),
+      stomp: live && i.hit('Space'),
+      slot: live ? slot : -1,
+      scroll: live ? i.mouse.wheel : 0,
+      aim: [f.x, f.y, f.z],
+      eye: [c.x, c.y, c.z],
+    };
+  }
+
   wireEvents() {
     const ev = this.world.events;
+    ev.on('wireCut', (e) => this.synth.noiseBurst(e.x, 0.1, e.z, 0.12, 3500, 3, 0.7));
+    ev.on('zap', (e) => this.synth.zap(e.x, e.z));
+    ev.on('harvest', (e) => this.synth.noiseBurst(e.x, 0.3, e.z, 0.3, 500, 1, 0.5));
+    ev.on('stomp', (e) => this.synth.thump(e.x, 0.1, e.z, 90, 0.5));
+    ev.on('crank', () => this.synth.noiseBurst(this.me.x, 1, this.me.z, 0.05, 2000, 6, 0.25));
+    ev.on('generatorOff', (e) => this.synth.thump(e.x, 0.5, e.z, 40, 0.5));
     ev.on('breach', (e) => this.synth.breach(e.x, e.kind === 'ceiling' ? 2.6 : 0.5, e.z));
     ev.on('dig', (e) => this.synth.scratch(e.x, e.z));
     ev.on('scratch', (e) => this.synth.scratch(e.x, e.z));
@@ -170,7 +231,11 @@ export class Game {
     if (i.hit('KeyT')) this.panel.flip('topDown');
     if (i.hit('KeyG')) this.panel.flip('god');
     if (i.hit('Backquote')) this.panel.el.classList.toggle('hidden');
-    if (i.hit('KeyF')) this.me.flashlight.on = !this.me.flashlight.on;
+    if (i.hit('KeyF')) {
+      const it = this.me.slots[this.me.sel];
+      if (it?.kind === 'flashlight') it.on = !it.on;
+    }
+    this.map.show(i.down('Tab'));
   }
 
   frame(t: number) {
@@ -186,13 +251,8 @@ export class Game {
     if (!this.opts.bench) this.ctrl.update(dt, this.input, locked);
     else this.ctrl.update(dt, this.input, false);
     if (this.opts.auto) this.autopilot(dt);
-    // flamethrower
-    me.firing = !me.downed && ((locked && this.input.mouse.left) || this.debugFire);
-    if (me.firing) {
-      const f = this.ctrl.forward(new THREE.Vector3());
-      const o = this.camera.position;
-      this.world.fire.emit(o.x + f.x * 0.5, o.y - 0.35, o.z + f.z * 0.5, f.x, f.y, f.z, dt);
-    }
+    this.ctrl.speedMul = me.carrying ? 0.6 : 1;
+    applyInput(this.world, me, this.buildInput(locked), dt);
     this.synth.flame(me.firing);
     if (this.panel.state.god) me.overwhelm = 0;
 
@@ -214,6 +274,8 @@ export class Game {
     this.renderer.render(this.scene, top ? this.topCam : this.camera);
     this.renderMs = performance.now() - r0;
     this.hud.update(me, this.time, { locked: locked || this.opts.bench });
+    this.hud.updateCamp(this.world, me, promptFor(this.world, me, findTarget(this.world, me)));
+    this.map.draw(this.world, me.id, this.time);
     this.updateOverlay(dt, simMs);
     if (this.bench) this.benchTick(dtMs, simMs);
     this.input.endFrame();
@@ -228,6 +290,13 @@ export class Game {
     this.lights.update(w.allLights(), 'local', this.camera.position, this.time);
     this.fx.update(dt, w.fire, this.time);
     this.debug.update(dt);
+    this.camp.update(dt, this.me);
+    let gen: any = null, gd = 1e9;
+    for (const d of w.camp.devices) {
+      const dd = Math.hypot(d.x - this.me.x, d.z - this.me.z);
+      if (d.kind === 'generator' && d.running && dd < gd) (gen = d), (gd = dd);
+    }
+    this.synth.hum(gen ? gen.x : 0, gen ? gen.z : 0, !!gen);
     // audio: listener + chitter density near the camera
     const cam = this.camera.position;
     const f = this.ctrl.forward(new THREE.Vector3());
