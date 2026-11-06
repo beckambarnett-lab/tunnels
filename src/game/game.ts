@@ -15,7 +15,7 @@ import { Synth } from '../audio/synth';
 import { Overlay } from '../debug/overlay';
 import { CampMesh } from '../render/campMesh';
 import { WarMap } from './map';
-import { applyInput, findTarget, promptFor, PlayerInput } from '../sim/actions';
+import { applyInput, findTarget, promptFor, PlayerInput, zap } from '../sim/actions';
 import { newItem } from '../sim/camp';
 import { Panel } from '../debug/panel';
 
@@ -104,7 +104,7 @@ export class Game {
     canvas.addEventListener('mousedown', () => this.synth.start());
     addEventListener('keydown', () => this.synth.start(), { once: true });
     this.wireEvents();
-    (window as any).__tunnels = { game: this, world: this.world };
+    (window as any).__tunnels = { game: this, world: this.world, actions: { zap, applyInput } };
   }
 
   /** Pick the yaw that looks down the longest open line from a point. */

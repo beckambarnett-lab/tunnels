@@ -495,10 +495,14 @@ export class Camp {
         const a = wr.points[k], b = wr.points[k + 1];
         const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
         if (w.light.effAt(mx, mz) > SWARM.tolerance) continue; // they won't chew in the light
+        // wire-cutters (the sabotage tendril) chew at full rate; any other bug only nibbles
         let chewers = 0;
         sw.hash.forEachNear(mx, mz, r + 0.3, (j) => {
           if (!sw.alive[j] || sw.layer[j] || sw.state[j] === BURN) return;
-          if ((sw.x[j] - mx) ** 2 + (sw.z[j] - mz) ** 2 < r2 + 0.09) chewers++;
+          if ((sw.x[j] - mx) ** 2 + (sw.z[j] - mz) ** 2 < r2 + 0.09) {
+            const t = w.tendrils.get(sw.tendril[j]);
+            chewers += !t || t.intent === 'sabotage' ? 1 : 0.15;
+          }
         });
         if (!chewers) continue;
         const prog = (wr.chew.get(k) || 0) + (Math.min(chewers, 6) * dt) / CAMP.cutTime;

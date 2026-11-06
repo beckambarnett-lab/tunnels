@@ -46,5 +46,33 @@ See `docs/QUESTIONS.md`. Short version: floors/ceilings are a second "under" lay
 ### Known bugs
 - See PROGRESS.md "Known bugs / limits".
 
+## Milestone 2 — The moving camp (tag `milestone-2`)
+
+### What was built
+- One shared fuel pool (1,500) on a wrist gauge; every drain from the GDD table (generator 1/min, lamp 0.5/min, floodlight 2/min, flamethrower 6/s, flashlight recharge 3, hive oil +2).
+- 3-slot inventory. The generator is two-handed: you need empty hands to lift it, it fills all three slots and slows you to 60%. With the flashlight not in your hand, your light goes out while you move the camp.
+- Devices: generator, lamp, floodlight (aim with RMB), motion lamp, splitter.
+- The wiring reel exactly as the GDD describes: E on a source, walk (cable pays out, 15 m tether), alternate LMB/RMB to wind in, E on the next device to connect. Cuts kill everything downstream.
+- Bugs chew dark cable (cut segments flash red on the cable and on the Tab map); hold R to repair.
+- Hive oil: zapper and stomp kills leave belly-up bodies; E harvests them; fire leaves nothing.
+- Tab war map: explored tunnels, light, live/dead/cut cables, devices, you.
+
+### Playtest this
+1. Start: you hold a flashlight (1), flamethrower (2) and a spool (3). The camp kit lies on the floor ahead.
+2. Drop your three items (Q on each), walk to the generator, press E to lift it, walk a few metres, RMB to set it down (it starts; E toggles it).
+3. Pick up your gear again, pick up a lamp, RMB to place it 8–10 m away.
+4. Select the spool (3), E on the generator, walk to the lamp (watch the cable pay out), E on the lamp: it lights up.
+5. Walk past the lamp to feel the 15 m tether; alternate LMB/RMB while walking back to wind cable in.
+6. Wait in the camp. The swarm sends wire-cutters to the darkest stretch: the lamp goes out, the cut flashes red (Tab). Burn them off (2, LMB), then hold R at the cut.
+7. Zapper (on the floor): LMB zaps up to 3 bugs in front for 3 fuel each; E on the bodies harvests +2 each. Space stomps (free, but you're in reach).
+8. Pack up and move: E on the lamp, E on the cable to coil it, empty your hands, hold E on the generator, carry it on, set up again.
+
+### Decisions where the GDD was open
+Q5–Q9 in `docs/QUESTIONS.md`: port counts (generator 2 outputs), only the held item works (flashlight must be in hand), lifting the generator needs empty hands, zapper costs 3 fuel per kill, flashlight battery 240 s.
+
+### Deviations
+- Wire-cutting rate is split by role: the sabotage tendril (wire-cutters) chews at full rate, other bugs only nibble (15%). Without this, every massing bug shredded any cable in the dark within a second.
+- The starting kit is a test kit on the floor; the house, the van and the GDD's progression come in M5.
+
 ## Next
-Milestone 2: the moving camp.
+Milestone 3: the queen and director.

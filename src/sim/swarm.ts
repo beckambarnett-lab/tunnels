@@ -49,6 +49,7 @@ export class Swarm {
   rng: Rng;
   frame = 0;
   private free: number[] = [];
+  eruptedAt = new Map<number, number>();
   private nearest = new Float32Array(0);
   // reusable per-frame scratch
   stats = { mass: 0, strike: 0, flow: 0, burn: 0, under: 0, inLight: 0, digging: 0, simulated: 0 };
@@ -218,7 +219,11 @@ export class Swarm {
               this.layer[i] = 0;
               this.y[i] = this.rng.next() < 0.3 ? 2.6 : -0.35; // some drop from the ceiling
               this.timer[i] = 0;
-              ctx.events.emit('breach', { kind: this.y[i] > 0 ? 'ceiling' : 'floor', cell: nx, x: px, z: pz });
+              // one breach per hole: followers through the same spot don't count again
+              const last = this.eruptedAt.get(nx);
+              if (last === undefined || ctx.time - last > 10) ctx.events.emit('breach', { kind: this.y[i] > 0 ? 'ceiling' : 'floor', cell: nx, x: px, z: pz });
+              else ctx.events.emit('erupt', { cell: nx, x: px, z: pz });
+              this.eruptedAt.set(nx, ctx.time);
             } else {
               speed = 0;
               this.timer[i] += dtl; // waiting under the floor (drives the dirt-trickle tell)
