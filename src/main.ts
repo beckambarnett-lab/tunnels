@@ -4,6 +4,9 @@ import { showLobby, LobbyChoice } from './game/lobby';
 import { LocalTransport, PeerTransport, Transport } from './net/transport';
 import { NetSession } from './net/session';
 import { readBrowserSave } from './net/save';
+import { installErrorHandlers, showError } from './game/errors';
+
+installErrorHandlers();
 
 const q = new URLSearchParams(location.search);
 const base = {
@@ -54,4 +57,4 @@ async function start() {
     };
   }
 }
-start();
+start().catch(showError);

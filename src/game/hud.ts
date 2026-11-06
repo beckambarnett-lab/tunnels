@@ -138,7 +138,7 @@ export class Hud {
     this.promptEl.textContent = prompt + extra;
   }
 
-  update(p: SimPlayer, time: number, extra: { locked: boolean }) {
+  update(p: SimPlayer, time: number, extra: { locked: boolean; lockError?: string }) {
     const c = this.canvas;
     const w = (c.width = innerWidth), h = (c.height = innerHeight);
     const x = this.ctx;
@@ -165,7 +165,7 @@ export class Hud {
       x.fillRect(0, 0, w, h);
     }
     this.msg.textContent = p.downed ? 'OVERWHELMED' : '';
-    this.hint.textContent = extra.locked ? '' : 'Click to play';
+    this.hint.textContent = extra.locked ? '' : extra.lockError ? `Click to play\n${extra.lockError}` : 'Click to play';
   }
 
   private bug(x: number, y: number, a: number, s: number, ph: number) {

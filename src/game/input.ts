@@ -13,9 +13,13 @@ export class Input {
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));
     addEventListener('blur', () => this.keys.clear());
-    el.addEventListener('mousedown', (e) => {
+    // a click anywhere on the game captures the mouse (not just the canvas: an overlay must never
+    // swallow it), except on real controls (menu, debug panel, error box)
+    addEventListener('mousedown', (e) => {
       if (!this.locked) {
-        el.requestPointerLock?.();
+        const t = e.target as HTMLElement | null;
+        if (t?.closest?.('button, input, select, textarea, a, #debug-panel, #errors, #menu')) return;
+        this.lock();
         return;
       }
       if (e.button === 0) {
@@ -38,12 +42,35 @@ export class Input {
       this.mouse.dy += e.movementY;
     });
     addEventListener('wheel', (e) => (this.mouse.wheel += Math.sign(e.deltaY)), { passive: true });
+    document.addEventListener('pointerlockerror', () => {
+      this.lockError = 'The browser refused to capture the mouse. Click again';
+    });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === el;
+      if (this.locked) this.lockError = '';
+      else this.unlockedAt = performance.now();
       if (!this.locked) {
         this.mouse.left = this.mouse.right = false;
       }
     });
+  }
+  /** why the last capture failed, shown under "Click to play" */
+  lockError = '';
+  private unlockedAt = -1e9;
+  lock() {
+    // Chrome refuses a re-capture within about a second of leaving it with Esc
+    if (performance.now() - this.unlockedAt < 1100) {
+      this.lockError = 'Wait a moment after Esc, then click again';
+      return;
+    }
+    try {
+      const r: any = (this.el as any).requestPointerLock?.();
+      if (!(this.el as any).requestPointerLock) this.lockError = 'This browser cannot capture the mouse (use Chrome, Edge or Firefox)';
+      // newer browsers return a promise that rejects instead of firing pointerlockerror
+      if (r && typeof r.catch === 'function') r.catch((err: any) => (this.lockError = `Mouse capture failed (${err?.name || err}). Click again`));
+    } catch (err: any) {
+      this.lockError = `Mouse capture failed (${err?.name || err}). Click again`;
+    }
   }
   down(code: string) {
     return this.keys.has(code);

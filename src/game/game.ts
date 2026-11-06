@@ -25,6 +25,7 @@ import { saveToBrowser, exportFile, readBrowserSave, applySave, makeSave } from 
 import { NightMesh } from '../render/nightMesh';
 import { ZONE_NAMES, NightLayout } from '../sim/night';
 import { Panel } from '../debug/panel';
+import { showError } from './errors';
 
 export interface GameOptions {
   seed: number;
@@ -368,8 +369,13 @@ export class Game {
   start() {
     this.last = performance.now();
     const loop = (t: number) => {
-      this.frame(t);
+      // schedule first: one bad frame must never freeze the game on its last picture
       requestAnimationFrame(loop);
+      try {
+        this.frame(t);
+      } catch (e) {
+        showError(e);
+      }
     };
     requestAnimationFrame(loop);
   }
@@ -522,7 +528,7 @@ export class Game {
     }
     this.renderer.render(this.scene, top ? this.topCam : this.camera);
     this.renderMs = performance.now() - r0;
-    this.hud.update(me, this.time, { locked: locked || this.opts.bench });
+    this.hud.update(me, this.time, { locked: locked || this.opts.bench, lockError: this.input.lockError });
     this.toastT -= dt;
     this.hud.updateCamp(this.world, me, (this.toastT > 0 ? this.toast + '\n' : '') + promptFor(this.world, me, findTarget(this.world, me)));
     this.map.draw(this.world, me.id, this.time);
