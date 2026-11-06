@@ -214,7 +214,11 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
         }
         break;
       case 'sprayer':
-        if (inp.use) p.spraying = true;
+        if (inp.use) {
+          p.spraying = true;
+          const house = w.run?.house;
+          if (house?.tendril) w.swarm.sprayPests(p.x, p.z, Math.sin(p.yaw), Math.cos(p.yaw), w.time, (id) => house.owns(id));
+        }
         break;
       case 'flare':
         if (inp.usePressed) {

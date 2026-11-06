@@ -93,6 +93,9 @@ The swarm now only strikes through an *opening* the hive has sensed; everywhere 
 
 Measured (`tests/openings.test.ts`): no opening → 300 bugs within 9 m, 0 touching, 0 strikes. Lamp dies → found and struck in 0.05 s, first bug touches the player 0.70 s later; relit → strikes released 2.0 s later, 0 touching after. Cut cable → named `wireCut`. Back to an unlit wall with flank tendrils massed in the earth → strike 2.3 s, 2 breaches behind the player, up to 63 bugs on them. Sick generator → 22 coughs, 24 openings. The 15-minute natural run chose 8 of 10 intents (never conceal or bait that seed) with openings found: lightDied 8, fireStopped 9, outOfLight 1, unlitWall 1.
 
+### The house infestation (act 1)
+The house was empty: it is sealed from the nest until the power dies and the swarm only spawns in the nest. Now 70 bugs are scattered through every room (`src/sim/house.ts`, swarm `pest` steering), the job is 50 kills, the vent tops the house up, the sprayer makes house pests play dead, and when the power dies the survivors join the hive. The population balance never despawns a bug within 15 m of a player. `tests/house.test.ts`: spread over all four bands of rooms (20/10/25/15) and all three columns (17/26/27); 62/70 moved within 6 s; 65/70 sitting in lamplight (the lamps don't push them away); a pest 0.8 m away is 2.1 m away 0.8 s later; the sprayer stopped 11 of 12 targets and spray-then-zap gave 20 job kills in 12 tries; all 17 survivors join the queen's tendrils when the power dies. See QUESTIONS.md Q23.
+
 ## In progress
 - (none)
 

@@ -264,18 +264,29 @@ export class World {
     const sw = this.swarm;
     const cells = this.layout.hiveCells;
     let spawned = 0;
-    while (sw.active < this.targetBugs && spawned < 60 && cells.length) {
+    const pests = this.pestCount; // the house bugs come on top of the hive's numbers
+    while (sw.active - pests < this.targetBugs && spawned < 60 && cells.length) {
       const c = cells[this.rng.int(cells.length)];
       sw.spawn(this.grid.centerX(c) + (this.rng.next() - 0.5) * CELL, this.grid.centerZ(c) + (this.rng.next() - 0.5) * CELL);
       spawned++;
     }
-    let extra = sw.active - this.targetBugs;
+    let extra = sw.active - pests - this.targetBugs;
     for (let i = sw.count - 1; i >= 0 && extra > 0; i--) {
-      if (sw.alive[i]) {
+      // never pop a bug out of existence where someone could see it (nearest player > 15 m)
+      if (sw.alive[i] && !this.isReserved(sw.tendril[i]) && sw.nearest[i] > 225) {
         sw.kill(i, 'despawn');
         extra--;
       }
     }
+  }
+
+  /** bugs of this tendril belong to someone other than the queen (a hive player, the act-1 house) */
+  isReserved(tendrilId: number) {
+    return this.death.isHiveTendril(tendrilId) || !!this.run?.house.owns(tendrilId);
+  }
+  /** live bugs the queen and the population balance don't count (the act-1 house infestation) */
+  get pestCount() {
+    return this.run?.house.tendril ? this.run.house.aliveCount : 0;
   }
 
   get authority() {
@@ -308,7 +319,8 @@ export class World {
       this.learning.step(dt);
     }
     this.queen?.update(dt);
-    for (const tr of this.tendrils.values()) tr.field = this.fields.get(tr.fieldName, tr.goals, tr.params, this.time);
+    // pests (the act-1 house bugs) only steer; they never read a field
+    for (const tr of this.tendrils.values()) if (tr.mode !== 'pest') tr.field = this.fields.get(tr.fieldName, tr.goals, tr.params, this.time);
     this.timings.queen = T(t);
     t = now();
     this.fields.update(this.time);

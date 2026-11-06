@@ -1,7 +1,8 @@
 import type { FieldParams } from './flowfield';
 import type { Field } from './fieldManager';
 
-export type TendrilMode = 'idle' | 'mass' | 'strike' | 'retreat';
+/** pest: the act-1 house infestation, acting like ordinary bugs (see HouseInfestation) */
+export type TendrilMode = 'idle' | 'mass' | 'strike' | 'retreat' | 'pest';
 
 /**
  * A tendril: 20-200 bugs following one goal through one shared flow field.

@@ -29,7 +29,7 @@ describe('the full night (vertical slice)', () => {
     try {
       expect(w.run!.act).toBe(1);
       run(w, 1);
-      w.run!.jobKills = 8; // the job: zap the bugs in the house
+      w.run!.jobKills = w.run!.jobTarget; // the job: zap the bugs in the house
       const fl = L.marks.find((m) => m.kind === 'flashlights')!;
       w.camp.drop('flashlight', fl.x, fl.z);
       p.slots[2] = newItem('flashlight');

@@ -393,7 +393,7 @@ export class Game {
     let goal = '';
     if (r.act === 1) {
       const hasLight = w.players.some((p) => p.slots.some((s) => s?.kind === 'flashlight'));
-      goal = r.powerOn ? `The job: zap the bugs in the house with the generator zapper (${Math.min(r.jobKills, r.jobTarget)}/${r.jobTarget}). ${hasLight ? '' : 'Find the flashlights (bathroom cupboard).'}` : 'The basement floor has opened. Go down.';
+      goal = r.powerOn ? `The job: the house is infested. Spray bugs to stop them, zap them with the generator zapper (${Math.min(r.jobKills, r.jobTarget)}/${r.jobTarget}). ${hasLight ? '' : 'Find the flashlights (bathroom cupboard).'}` : 'The basement floor has opened. Go down.';
     } else if (r.act === 2) goal = 'Set up a base at the nest mouth: generator, lamps, cable. Then push on.';
     else if (r.act === 3) goal = r.used.size ? 'Carry the camp deeper. Oil rigs refuel you.' : 'The intersection: strap the big fuel tanks onto your sprayers.';
     else if (r.act === 4) goal = r.rage < 1 ? `Find the Enlite suits (dig with X). Burn the queen's egg sacs (rage ${(r.rage * 100).toFixed(0)}%).` : 'She is coming. Get to the digging truck!';

@@ -231,7 +231,7 @@ export class Openings {
       if (!o.open) continue;
       let found = false;
       sw.hash.forEachNear(o.x, o.z, QUEEN.senseRange, (j) => {
-        if (sw.alive[j] && !w.death.isHiveTendril(sw.tendril[j])) {
+        if (sw.alive[j] && !w.isReserved(sw.tendril[j])) {
           found = true;
           return true;
         }

@@ -155,6 +155,23 @@ export const LEARN = {
   // time-based fallback unlocks (fairness: keep pace with strong teams), minutes of run time
   fallbackMin: { testLight: 6, flank: 8, breach: 10, sabotage: 7, sabotageGenerator: 14, spreadOut: 12, bait: 12, dragDead: 15, triggerMotion: 15, takeOver: 30, darkRush: 40 },
 };
+/** The act-1 house infestation (GDD: the routine job; the hive acts like ordinary bugs). */
+export const PEST = {
+  count: 70, // bugs scattered through every room at the start of the night
+  jobTarget: 50, // zapped or stomped in the house to finish the job
+  topUpBelow: 14, // fewer alive than this (job unfinished): more crawl out of the vent
+  topUpBatch: 12,
+  fleeDist: 1.7, // m: scatter from anyone closer
+  fleeSpeed: 0.85, // x dark speed (a sprint catches them)
+  sprayRange: 3.2, // m: the bug sprayer makes house pests play dead...
+  sprayCone: 0.42, // rad half-angle
+  stunned: 2.6, // ...for this long (they're easy to zap in a heap)
+  speed: 0.7, // x dark speed while scuttling
+  feel: 0.45, // m ahead checked for a wall
+  hushEvery: 19, // s between the tell (every pest freezes at once)
+  hushSharp: 0.985, // how short the freeze is (sin threshold; ~1 s)
+};
+
 export const DIRECTOR = {
   peakThreshold: 0.75,
   calmThreshold: 0.25,

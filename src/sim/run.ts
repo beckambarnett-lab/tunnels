@@ -1,4 +1,5 @@
-import { CELL } from '../config';
+import { CELL, PEST } from '../config';
+import { HouseInfestation } from './house';
 import { makeLight, LightSource } from './light';
 import { newItem } from './camp';
 import { NightLayout, Z, Mark } from './night';
@@ -17,7 +18,8 @@ export class Run {
   act = 1;
   furthest = 0; // furthest main-path column reached
   jobKills = 0;
-  jobTarget = 8;
+  jobTarget = PEST.jobTarget;
+  house: HouseInfestation;
   powerOn = true;
   plugOpen = false;
   houseLights: LightSource[] = [];
@@ -41,7 +43,8 @@ export class Run {
     w.events.on('bugDeath', (e) => {
       if ((e.cause === 'zap' || e.cause === 'stomp') && this.zoneAt(e.x, e.z) === Z.house) this.jobKills++;
     });
-    this.say('BOSS: Routine job, folks. Suburban house, bug problem. Spray it, zap it, invoice it.');
+    this.house = new HouseInfestation(w, L);
+    this.say("BOSS: Routine job, folks. Suburban house, bad infestation: they're in every room. Spray it, zap it, invoice it.");
   }
 
   zoneAt(x: number, z: number) {
@@ -163,13 +166,16 @@ export class Run {
     // milestone spaces (GDD): flashlights, the intersection, the suits, the truck (+ every oil rig)
     const truck = this.L.marks.find((m) => m.kind === 'truck');
     if (truck && alive.some((p) => Math.hypot(p.x - truck.x, p.z - truck.z) < 6)) this.checkpoint('the truck');
+    if (this.act > 1) this.house.reveal();
     // act 1: the job, flashlights, the power dies, the basement opens
     if (this.act === 1) {
+      if (this.powerOn) this.house.step(this.jobKills >= this.jobTarget);
       const hasLight = w.players.some((p) => p.slots.some((s) => s?.kind === 'flashlight'));
       if (hasLight) this.checkpoint('flashlights');
       if (this.powerOn && this.jobKills >= this.jobTarget && hasLight) {
         this.powerOn = false;
         for (const l of this.houseLights) l.on = false;
+        this.house.reveal(); // the act is over: what's left of the infestation joins the hive
         this.note('the hive chewed through the mains: the house goes dark');
         w.events.emit('powerDies', {});
         this.say('BOSS: Lights out? Probably the breaker. Check the basement.');

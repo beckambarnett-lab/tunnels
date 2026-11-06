@@ -1,4 +1,4 @@
-import { CELL, SWARM, LIGHT } from '../config';
+import { CELL, SWARM, LIGHT, PEST } from '../config';
 import { Rng } from '../core/rng';
 import { Events } from '../core/events';
 import { Grid, OPEN, SOLID } from './grid';
@@ -48,13 +48,16 @@ export class Swarm {
   tendril: Int32Array;
   timer: Float32Array;
   phase: Float32Array;
+  /** a pest's own wandering direction (radians; x = sin, z = cos) */
+  wander: Float32Array;
   role: Uint8Array;
   hash: SpatialHash;
   rng: Rng;
   frame = 0;
   private free: number[] = [];
   eruptedAt = new Map<number, number>();
-  private nearest = new Float32Array(0);
+  /** squared distance to the nearest living player, as of the last step */
+  nearest = new Float32Array(0);
   // reusable per-frame scratch
   stats = { mass: 0, strike: 0, flow: 0, burn: 0, under: 0, inLight: 0, digging: 0, simulated: 0 };
 
@@ -72,6 +75,7 @@ export class Swarm {
     this.tendril = new Int32Array(max).fill(-1);
     this.timer = new Float32Array(max);
     this.phase = new Float32Array(max);
+    this.wander = new Float32Array(max);
     this.role = new Uint8Array(max);
     this.nearest = new Float32Array(max);
     this.hash = new SpatialHash(grid.w * CELL, grid.h * CELL, 1.0, max);
@@ -95,6 +99,7 @@ export class Swarm {
     this.timer[i] = 0;
     this.phase[i] = this.rng.next() * 100;
     this.heading[i] = this.rng.next() * Math.PI * 2;
+    this.wander[i] = this.rng.next() * Math.PI * 2;
     this.active++;
     return i;
   }
@@ -158,6 +163,56 @@ export class Swarm {
     return ctx.light.surfaceRaw(cell) < LIGHT.darkThreshold;
   }
 
+  /**
+   * Act 1 (GDD: the hive "conceals itself; acts almost like normal bugs"): a pest scuttles in
+   * stop-start bursts, turns along the walls it runs into, scatters from anyone who comes close and
+   * pays the house lamps no mind. Pure steering from shared state (time, phase, the grid, players),
+   * so host and clients agree. The tell ("slightly too organised"): about every 19 s every pest in
+   * the house freezes at the same instant for about a second.
+   */
+  private pestSteer(i: number, px: number, pz: number, dt: number, ctx: SwarmContext): [number, number, number] {
+    const g = this.grid, ph = this.phase[i], T = ctx.time;
+    // sprayed: playing dead (timer holds the time they get up; see sprayPests)
+    if (this.timer[i] > T) return [0, 0, 0];
+    let h = this.wander[i] + Math.sin(T * 0.9 + ph * 7) * 1.4 * dt;
+    let flee = false, best = PEST.fleeDist * PEST.fleeDist;
+    for (const p of ctx.players) {
+      if (!p.alive) continue;
+      const ox = px - p.x, oz = pz - p.z, d2 = ox * ox + oz * oz;
+      if (d2 < best) {
+        best = d2;
+        flee = true;
+        h = Math.atan2(ox, oz) + Math.sin(ph * 5) * 0.7; // away, each at its own angle (they scatter)
+      }
+    }
+    // running into a wall: turn along it (each bug always turns the same way, so they trace edges)
+    const turn = ph % 2 < 1 ? 1 : -1;
+    for (let k = 0; k < 4 && !g.isOpenAt(px + Math.sin(h) * PEST.feel, pz + Math.cos(h) * PEST.feel); k++) h += turn * 0.9;
+    this.wander[i] = h;
+    const hush = Math.sin((T * 2 * Math.PI) / PEST.hushEvery) > PEST.hushSharp;
+    const burst = Math.sin(T * 1.9 + ph * 11) + 0.6 * Math.sin(T * 0.83 + ph * 3) > 0.35;
+    const speed = flee ? SWARM.darkSpeed * PEST.fleeSpeed : burst && !hush ? SWARM.darkSpeed * PEST.speed : 0;
+    return [Math.sin(h), Math.cos(h), speed];
+  }
+
+  /**
+   * The bug sprayer (GDD: teaches the flamethrower's feel, useless against the hive): pests in the
+   * spray cone curl up and play dead for a moment. Real hive tendrils don't care.
+   */
+  sprayPests(x: number, z: number, fx: number, fz: number, time: number, isPest: (tendril: number) => boolean) {
+    const R = PEST.sprayRange, cos = Math.cos(PEST.sprayCone);
+    let n = 0;
+    this.hash.forEachNear(x, z, R, (j) => {
+      if (!this.alive[j] || this.layer[j] || !isPest(this.tendril[j])) return;
+      const dx = this.x[j] - x, dz = this.z[j] - z, d = Math.hypot(dx, dz);
+      if (d > R || (d > 0.3 && (dx * fx + dz * fz) / d < cos)) return;
+      this.timer[j] = time + PEST.stunned;
+      this.vx[j] = this.vz[j] = 0;
+      n++;
+    });
+    return n;
+  }
+
   step(dt: number, ctx: SwarmContext) {
     const g = this.grid, n = g.n, light = ctx.light;
     const cells = g.cells;
@@ -214,8 +269,11 @@ export class Swarm {
         if (t.probeAmp > 0) tol *= 1 + t.probeAmp * Math.max(0, Math.sin(this.phase[i] * 7 + ctx.time * 1.3));
       }
       let digging = false;
+      const pest = !!t && t.mode === 'pest' && !layer;
 
-      if (next) {
+      if (pest) {
+        [dx, dz, speed] = this.pestSteer(i, px, pz, dtl, ctx);
+      } else if (next) {
         const node = layer ? cell + n : cell;
         const nx = next[node];
         if (nx < 0) {
@@ -317,7 +375,7 @@ export class Swarm {
         }
       }
 
-      if (!layer) {
+      if (!layer && !pest) {
         // ---- light: hold at the edge, retreat when inside ----
         const e = this.effSample(light, px, pz);
         const look = 0.45;

@@ -5,6 +5,9 @@ import { Influence } from './influence';
 import type { World, SimPlayer } from './world';
 import type { Device } from './camp';
 import { HIVE_INTENT } from './death';
+import { HOUSE_INTENT } from './house';
+/** tendrils the queen doesn't run: hive players' bugs, the act-1 house infestation */
+const notQueens = (t: Tendril) => t.intent === HIVE_INTENT || t.intent === HOUSE_INTENT;
 import { Openings, Opening } from './openings';
 
 export const INTENTS = ['conceal', 'probe', 'sabotage', 'flank', 'undermine', 'reroute', 'siege', 'bait', 'assault', 'retreat'] as const;
@@ -159,7 +162,7 @@ export class Queen {
       this.respond();
     }
     this.burnDeaths = this.burnDeaths.filter((t) => w.time - t < 5);
-    for (const t of w.tendrils.values()) this.refreshGoal(t);
+    for (const t of w.tendrils.values()) if (!notQueens(t)) this.refreshGoal(t);
     this.stepIntentEffects(dt);
     this.thinkTimer -= dt;
     if (this.thinkTimer > 0) return;
@@ -315,7 +318,7 @@ export class Queen {
 
   private syncTendrils() {
     const w = this.w, D = w.director, sw = w.swarm;
-    const N = sw.active;
+    const N = sw.active - w.pestCount;
     const players = w.players.filter((p) => p.alive && !p.downed);
     const maxT = Math.max(QUEEN.minTendril, D.maxTendril);
     const i = this.intent;
@@ -345,7 +348,7 @@ export class Queen {
       rest -= sz;
     }
     if (!roles.length) roles.push({ intent: 'hide', size: 0 });
-    const list = [...w.tendrils.values()].filter((t) => t.intent !== HIVE_INTENT); // hive players' bugs are theirs
+    const list = [...w.tendrils.values()].filter((t) => !notQueens(t)); // hive players' bugs are theirs; the house's pretend
     while (list.length < roles.length) {
       const t = makeTendril({ params: defaultParams(), born: w.time });
       w.tendrils.set(t.id, t);
@@ -392,7 +395,7 @@ export class Queen {
     const spill: number[] = [];
     for (let j = 0; j < sw.count; j++) {
       if (!sw.alive[j]) continue;
-      if (w.death.isHiveTendril(sw.tendril[j])) continue;
+      if (w.isReserved(sw.tendril[j])) continue;
       const cur = sw.tendril[j];
       if (quota.has(cur) && (count.get(cur) || 0) < quota.get(cur)!) count.set(cur, (count.get(cur) || 0) + 1);
       else spill.push(j);
@@ -400,7 +403,7 @@ export class Queen {
     // re-home spill: nearest-first to the committed intent so the closest bugs act
     let k = 0;
     for (const j of spill) {
-      if (w.death.isHiveTendril(sw.tendril[j])) continue;
+      if (w.isReserved(sw.tendril[j])) continue;
       while (k < ids.length && (count.get(ids[k]) || 0) >= quota.get(ids[k])!) k++;
       const id = k < ids.length ? ids[k] : ids[ids.length - 1];
       sw.tendril[j] = id;
@@ -455,7 +458,7 @@ export class Queen {
 
   /** Which tendrils may strike through an opening: the queen's intent allows it (GDD). */
   private permits(t: Tendril, op: Opening) {
-    if (t.carryTarget || t.breakRitual || t.intent === HIVE_INTENT) return false;
+    if (t.carryTarget || t.breakRitual || notQueens(t)) return false;
     switch (t.intent) {
       case 'surround': // the ring around the bubble
       case 'assault':
@@ -494,7 +497,7 @@ export class Queen {
   private respond() {
     const w = this.w, D = w.director, sw = w.swarm;
     const silent = w.time < this.silenceUntil;
-    const tendrils = [...w.tendrils.values()].filter((t) => t.intent !== HIVE_INTENT);
+    const tendrils = [...w.tendrils.values()].filter((t) => !notQueens(t));
     // tendril centres (where their bugs actually are)
     const cen = new Map<number, { x: number; z: number; n: number }>();
     for (let j = 0; j < sw.count; j++) {
@@ -523,7 +526,7 @@ export class Queen {
     // new responders: only when the director lets the hive push (and never during the assault's hush)
     const pushing = (D.state === 'Build Up' || D.state === 'Sustain Peak') && D.budget > 0 && !silent;
     if (!pushing) return;
-    const N = sw.active;
+    const N = sw.active - w.pestCount;
     for (const op of [...open.values()].slice(0, 3)) {
       const want = Math.round(N * D.budget * op.strength * 0.5);
       let have = 0;
@@ -622,7 +625,7 @@ export class Queen {
 
   refreshGoal(t: Tendril) {
     const w = this.w;
-    if (t.intent === HIVE_INTENT) return; // steered by its hive player
+    if (notQueens(t)) return; // steered by its hive player / pretending to be ordinary bugs
     if (t.carryTarget) {
       const dp = w.players.find((p) => p.id === t.carryTarget && p.downed && !p.hive);
       if (dp) {
