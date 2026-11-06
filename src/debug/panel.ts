@@ -69,7 +69,12 @@ export class Panel {
     this.el.appendChild(this.row('force intent', sel));
     const help = document.createElement('div');
     help.className = 'dp-help';
-    help.textContent = 'Click to look. WASD move, Shift sprint, Ctrl/C crouch, LMB flamethrower, F flashlight.';
+    help.innerHTML =
+      'Click to look. WASD move, Shift sprint, Ctrl/C crouch.<br>' +
+      '1/2/3 or wheel: slot. LMB use (fire, light, zap). RMB place / aim.<br>' +
+      'E interact (pick up, cable, revive, harvest). Q drop. R repair. Space stomp.<br>' +
+      'Alternate LMB/RMB while laying cable to reel in. Tab war map. X dig (Enlite suit).<br>' +
+      'V walkie-talkie (online). Esc/P pause. K save, Shift+K export.';
     this.el.appendChild(help);
     this.refresh();
   }

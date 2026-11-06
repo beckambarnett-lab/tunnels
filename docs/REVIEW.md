@@ -140,4 +140,19 @@ Q2 (sync = local steering + keyframes), Q11 (solo hive failure), Q12 (gear drops
 ### Playtest this
 Title screen → *Play solo*. Or `?night&seed=2`. Zap 8 bugs in the house, grab a flashlight, go down when the floor opens, set up a base, push east: tanks at the crossroads, a rig, suits in the rusted junkyard, egg sacs in the chamber, then the truck: hold W/A/S/D toward the west (where you came from) and RMB for x-ray.
 
-## Next
+## Known bugs and rough edges (all milestones)
+- **fps on a real GPU is unmeasured.** The container has no GPU; CPU per frame is 2 ms at 500 bugs, but please run `?bench` and read the FPS line.
+- Online play (PeerJS) and proximity voice are written but untested (no WebRTC or mic here). Same-machine tabs are tested.
+- The night is a vertical slice: one of each set piece, ~9 segments end to end. The truck drive takes about half a minute to a minute; the GDD wants a ~10-minute chase.
+- The house is one flat floor (the grid is 2D); "the basement" is a plug at the house's east wall.
+- Hive tunnels are one cell (0.5 m) wide, so players usually can't follow bugs through them. Enlite-suit digging (X) opens one cell at a time.
+- With the test autopilot (god mode, never fights back) the director's Peak Fade ends by its 30 s timeout rather than by the fight resolving.
+- In-game text is placeholder; the boss radio is subtitles plus static (no voice).
+- Not built: the bad ending's "replay the finale inside the swarm's mind" (the hollow ending is a screen), flares, the hive voice for hive players over tabs (voice is online-only), between-run meta-progression.
+
+## What I'd do next
+1. Playtest the M3 gate for real: can people read the queen's plan from her tells? Tune the sound signatures and the intent mix from that.
+2. Measure fps on a mid-range laptop with `?bench` (and `?bench&bugs=1000`), then decide on LOD or shadow budgets.
+3. Test online play on two machines; fix PeerJS and voice issues.
+4. Grow the night: more hand-built segments and a second oil rig per act, a longer truck chase (route planning with the x-ray), the bad-ending replay loop, flares.
+5. Proper art: bug silhouettes, the queen, the house interior, the Enlite junkyard landmarks.
