@@ -12,6 +12,8 @@ A single-file copy of the whole repo (all history and tags) is also at `/tmp/cla
 git clone tunnels.bundle tunnels
 ```
 
+**On GitHub:** https://github.com/beckambarnett-lab/tunnels. The milestone rollback points are **branches** there (`milestone-1` … `milestone-5-slice`), because this session couldn't push tags; locally they are also tags.
+
 ## At a glance
 | Milestone | State | Tag |
 | --- | --- | --- |
