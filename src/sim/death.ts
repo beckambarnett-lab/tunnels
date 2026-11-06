@@ -188,7 +188,8 @@ export class Death {
     const st = n >= DEATH.bodyBugs * 0.9 ? Math.max(1, this.stage.get(p.id) ?? 0) : 0;
     if (moving && agree < -0.1) p.will -= DEATH.willDrainResist * dt;
     else p.will += DEATH.willRefill * dt;
-    if (st >= 1 && lit > DEATH.ritualLight * 0.5) p.will -= DEATH.willDrainLight * dt; // the bugs hate the light
+    const pinned = w.time - (p.shockedAt ?? -100) < 0.5;
+    if (st >= 1 && lit > DEATH.ritualLight * 0.5 && !pinned) p.will -= DEATH.willDrainLight * dt; // the bugs hate the light
     p.will = Math.max(0, Math.min(1, p.will));
     // steer toward the last open point along your direction (never a goal inside a wall)
     // (if the straight line is blocked, slide along the wall: try nearby angles)
@@ -239,14 +240,21 @@ export class Death {
           shock = true;
           w.fuel.drain(DEATH.soloZapperPerSec * dt, 'bugzapper', w.time);
         }
-      if (shock) p.ritual += dt / DEATH.ritualTime;
+      if (shock) {
+        p.ritual += dt / DEATH.ritualTime;
+        // the current pins the struggling mass where it stands
+        t.gx = p.hiveX;
+        t.gz = p.hiveZ;
+        t.goals = w.goalCellsAt(p.hiveX, p.hiveZ, 0);
+        p.shockedAt = w.time;
+      }
       // the queen sends a tendril to break it up
       let hostile = 0;
       sw.hash.forEachNear(p.hiveX, p.hiveZ, 1.5, (j) => {
         if (sw.alive[j] && !sw.layer[j] && sw.tendril[j] !== t.id && !this.isHiveTendril(sw.tendril[j])) hostile++;
       });
       if (hostile >= DEATH.breakBugs) {
-        p.ritual = Math.max(0, p.ritual - dt * 0.4);
+        p.ritual = Math.max(0, p.ritual - dt * 0.2);
         if (p.ritual === 0 && hostile > DEATH.breakBugs * 2) this.breakBody(p, t);
       }
       if (p.ritual >= 1) this.respawn(p, t);

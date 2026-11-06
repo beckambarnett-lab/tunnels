@@ -69,6 +69,7 @@ export interface SimPlayer {
   riding: boolean; // in the digging truck (finale)
   hose?: boolean; // garden hose taped on: longer, weaker flame
   god?: boolean; // debug god mode: never overwhelmed
+  shockedAt?: number; // last time their ritual body was electrocuted
   digT: number;
 }
 
