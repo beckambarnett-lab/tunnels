@@ -71,7 +71,7 @@ export function applyCamp(w: World, s: ReturnType<typeof campState>) {
 }
 
 // ---------- players ----------
-const PKEYS = ['x', 'z', 'yaw', 'pitch', 'alive', 'downed', 'downTimer', 'overwhelm', 'touching', 'firing', 'lastFired', 'crouch', 'slots', 'sel', 'carrying', 'layingWire', 'tethered', 'repairT', 'aim', 'eye', 'carriedT', 'reviveT', 'hive', 'will', 'ritual', 'hiveX', 'hiveZ', 'connected'] as const;
+const PKEYS = ['x', 'z', 'yaw', 'pitch', 'alive', 'downed', 'downTimer', 'overwhelm', 'touching', 'firing', 'lastFired', 'crouch', 'slots', 'sel', 'carrying', 'layingWire', 'tethered', 'repairT', 'aim', 'eye', 'carriedT', 'reviveT', 'hive', 'will', 'ritual', 'hiveX', 'hiveZ', 'connected', 'ritualStage', 'order', 'reviveT'] as const;
 export function playerState(p: SimPlayer) {
   const o: any = { id: p.id, fl: [p.flashlight.on, p.flashlight.intensity] };
   for (const k of PKEYS) o[k] = (p as any)[k];
@@ -136,7 +136,7 @@ export function swarmKeyframe(w: World, from: number, to: number) {
   const pos = new Int16Array(n * 2);
   const vel = new Int8Array(n * 2);
   const meta = new Uint8Array(n * 2); // alive|layer<<1|state<<2 , y quantised
-  const tend = new Int16Array(n);
+  const tend = new Int32Array(n);
   for (let k = 0; k < n; k++) {
     const i = from + k;
     pos[k * 2] = Math.round(sw.x[i] * Q);
@@ -166,7 +166,7 @@ export function applyKeyframe(w: World, k: ReturnType<typeof swarmKeyframe>, sta
   const pos = new Int16Array(unb64(k.pos).buffer);
   const vel = new Int8Array(unb64(k.vel).buffer);
   const meta = unb64(k.meta);
-  const tend = new Int16Array(unb64(k.tend).buffer);
+  const tend = new Int32Array(unb64(k.tend).buffer);
   const n = tend.length;
   sw.ensureCount(k.count);
   let err = 0, maxErr = 0, cmp = 0;

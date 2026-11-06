@@ -39,7 +39,8 @@ export type Target =
   | { kind: 'device'; dev: Device; d: number }
   | { kind: 'floor'; fi: FloorItem; d: number }
   | { kind: 'wire'; wire: Wire; d: number; end: boolean }
-  | { kind: 'bodies'; n: number; d: number };
+  | { kind: 'bodies'; n: number; d: number }
+  | { kind: 'player'; p: SimPlayer; d: number };
 
 /** What E would act on: the nearest interactable roughly in front of the player. */
 export function findTarget(w: World, p: SimPlayer): Target | null {
@@ -59,6 +60,7 @@ export function findTarget(w: World, p: SimPlayer): Target | null {
     }
   };
   for (const dev of w.camp.devices) consider(dev.x, dev.z, (d) => ({ kind: 'device', dev, d }));
+  for (const q of w.players) if (q !== p && q.alive && q.downed && !q.hive) consider(q.x, q.z, (d) => ({ kind: 'player', p: q, d }), -0.5);
   for (const fi of w.camp.floor) consider(fi.x, fi.z, (d) => ({ kind: 'floor', fi, d }), -0.1);
   for (const wr of w.camp.wires) {
     if (wr.layer) continue;
@@ -89,6 +91,7 @@ export function promptFor(w: World, p: SimPlayer, t: Target | null): string {
   if (cut) lines.push(`Hold R: repair cut cable${p.repairT > 0 ? ` (${Math.round((p.repairT / CAMP.repairTime) * 100)}%)` : ''}`);
   if (t) {
     if (t.kind === 'floor') lines.push(`E: pick up ${ITEM_NAMES[t.fi.item.kind]}${t.fi.item.kind === 'generator' && !c.allSlotsFree(p) ? ' (needs all 3 slots empty)' : ''}`);
+    if (t.kind === 'player') lines.push(`Hold E: revive ${t.p.id}${t.p.reviveT > 0 ? ` (${Math.round((t.p.reviveT / 3) * 100)}%)` : ''}${t.p.carriedT > 0 ? ' — they are being carried off!' : ''}`);
     if (t.kind === 'bodies') lines.push(`E: harvest hive oil (${t.n} bodies, +${t.n * FUEL.oilPerBody})`);
     if (t.kind === 'wire') lines.push(t.end ? 'E: pick up cable end' : 'E: coil cable onto a spool');
     if (t.kind === 'device') {
@@ -111,7 +114,7 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
   p.firing = false;
   p.aim = inp.aim;
   p.eye = inp.eye;
-  if (!p.alive || p.downed) {
+  if (!p.alive || p.downed || p.hive) {
     p.liftT = 0;
     return;
   }
@@ -122,6 +125,11 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
   }
   const held: Item | null = c.held(p);
   const target = findTarget(w, p);
+  // revive a downed teammate: hold E on them
+  if (inp.interact && target?.kind === 'player') {
+    w.death.revive(p, target.p, dt);
+    return;
+  }
 
   // ---- E ----
   if (inp.interactPressed) {
@@ -261,7 +269,8 @@ export function lightning(w: World, p: SimPlayer, inp: PlayerInput) {
     });
     cur = nxt;
   }
-  for (const j of hit) sw.kill(j, 'lightning', w.events);
+  // a struggling hive body in the light is electrocuted solid, not killed (respawn ritual)
+  for (const j of hit) if (!w.death.shockBody(j)) sw.kill(j, 'lightning', w.events);
   w.events.emit('lightning', { id: p.id, pts, kills: hit.length });
   return hit.length;
 }

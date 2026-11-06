@@ -43,7 +43,7 @@ export class Swarm {
   heading: Float32Array;
   layer: Uint8Array; // 0 surface, 1 under the floor
   state: Uint8Array;
-  tendril: Int16Array;
+  tendril: Int32Array;
   timer: Float32Array;
   phase: Float32Array;
   role: Uint8Array;
@@ -67,7 +67,7 @@ export class Swarm {
     this.heading = new Float32Array(max);
     this.layer = new Uint8Array(max);
     this.state = new Uint8Array(max);
-    this.tendril = new Int16Array(max).fill(-1);
+    this.tendril = new Int32Array(max).fill(-1);
     this.timer = new Float32Array(max);
     this.phase = new Float32Array(max);
     this.role = new Uint8Array(max);

@@ -14,6 +14,7 @@ import { Fuel } from './fuel';
 import { Camp, Item } from './camp';
 import { Learning } from './learning';
 import { Director } from './director';
+import { Death, HIVE_INTENT } from './death';
 
 export interface SimPlayer {
   id: string;
@@ -56,6 +57,8 @@ export interface SimPlayer {
   hiveZ: number;
   connected: boolean;
   hiveMove: [number, number]; // hive player's desired direction (world x/z)
+  ritualStage: number; // 0 gathering, 1 body formed, 2 in the light (electrocute it!)
+  order: string; // the queen's current order to a hive player
 }
 
 export type RunState = 'playing' | 'failed' | 'won';
@@ -93,6 +96,7 @@ export class World {
   camp: Camp;
   learning: Learning;
   director: Director;
+  death: Death;
   debugBreaches = true; // debug panel switch
   tendrils = new Map<number, Tendril>();
   players: SimPlayer[] = [];
@@ -123,6 +127,7 @@ export class World {
     this.camp = new Camp(this);
     this.learning = new Learning(this);
     this.director = new Director(this);
+    this.death = new Death(this);
     this.queen = opts.noQueen || this.role === 'client' ? null : new Queen(this);
     this.targetBugs = opts.bugs ?? SWARM.defaultBugs;
     this.events.on('breach', (e) =>
@@ -172,6 +177,8 @@ export class World {
       hiveZ: z,
       connected: true,
       hiveMove: [0, 0],
+      ritualStage: 0,
+      order: '',
     };
     this.players.push(p);
     return p;
@@ -290,6 +297,7 @@ export class World {
     if (this.authority) {
       this.camp.step(dt);
       this.stepPlayers(dt);
+      this.death.step(dt);
     }
     this.timings.total = T(t0);
   }
@@ -299,18 +307,7 @@ export class World {
     for (const p of this.players) {
       if (p.firing) p.lastFired = this.time;
       if (!p.alive) continue;
-      if (p.downed) {
-        p.downTimer -= dt;
-        if (p.downTimer <= 0) {
-          // M1 stand-in for carrying/revive: respawn at the start after a few seconds
-          p.downed = false;
-          p.overwhelm = 0;
-          p.x = this.layout.start.x;
-          p.z = this.layout.start.z;
-          this.events.emit('respawn', { id: p.id });
-        }
-        continue;
-      }
+      if (p.downed || p.hive) continue; // carrying, reviving and the hive are handled by Death
       let touching = 0;
       const r = SWARM.touchDist, r2 = r * r;
       sw.hash.forEachNear(p.x, p.z, r, (j) => {
@@ -324,7 +321,8 @@ export class World {
       if (p.overwhelm >= 1) {
         p.overwhelm = 1;
         p.downed = true;
-        p.downTimer = OVERWHELM.respawnDelay;
+        p.carriedT = 0;
+        p.reviveT = 0;
         this.events.emit('downed', { id: p.id, x: p.x, z: p.z });
       }
     }

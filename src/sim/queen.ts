@@ -4,6 +4,7 @@ import { makeTendril, Tendril, TendrilMode } from './tendril';
 import { Influence } from './influence';
 import type { World, SimPlayer } from './world';
 import type { Device } from './camp';
+import { HIVE_INTENT } from './death';
 
 export const INTENTS = ['conceal', 'probe', 'sabotage', 'flank', 'undermine', 'reroute', 'siege', 'bait', 'assault', 'retreat'] as const;
 export type Intent = (typeof INTENTS)[number];
@@ -223,6 +224,7 @@ export class Queen {
   /** Per-frame behaviour that isn't steering: siege damage, sabotage on the generator, dragging the dead, periodic tells. */
   private stepIntentEffects(dt: number) {
     const w = this.w, sw = w.swarm;
+    void HIVE_INTENT;
     // fixtures under attack (siege, sabotage of the generator): attacking bugs within reach damage them
     for (const t of w.tendrils.values()) {
       const target = t.attackDevice != null ? w.camp.devices.find((d) => d.id === t.attackDevice) : null;
@@ -297,19 +299,39 @@ export class Queen {
       rest -= sz;
     }
     if (!roles.length) roles.push({ intent: 'hide', size: 0 });
-    const list = [...w.tendrils.values()];
+    const list = [...w.tendrils.values()].filter((t) => t.intent !== HIVE_INTENT); // hive players' bugs are theirs
     while (list.length < roles.length) {
       const t = makeTendril({ params: defaultParams(), born: w.time });
       w.tendrils.set(t.id, t);
       list.push(t);
     }
     while (list.length > roles.length) w.tendrils.delete(list.pop()!.id);
+    // the queen sees a respawn ritual as an opportunity: one tendril goes to break it up
+    const ritual = w.players.find((p) => p.hive && p.ritualStage >= 2);
+    let breaker = false;
+    // a downed player is lifted by a carrier group and walked to the queen (GDD)
+    const downed = w.players.find((p) => p.alive && p.downed && !p.hive);
+    let carrier = false;
     list.forEach((t, k) => {
       const r = roles[k];
       t.size = r.size;
       const target = players.length ? players[k % players.length] : null;
       t.targetId = target?.id;
       this.configure(t, r.intent, silent);
+      t.breakRitual = null;
+      t.carryTarget = null;
+      if (downed && !carrier && (r.intent === 'surround' || r.intent === 'hide' || k === list.length - 1)) {
+        carrier = true;
+        t.mode = 'strike';
+        t.holdDist = 0;
+        t.braveness = 1.6;
+        t.carryTarget = downed.id;
+      } else if (ritual && !breaker && r.intent === 'surround') {
+        breaker = true;
+        t.mode = 'strike';
+        t.holdDist = 0;
+        t.breakRitual = ritual.id;
+      }
       this.refreshGoal(t);
     });
     // assign bugs to tendrils by role size, keeping members stable where possible
@@ -319,6 +341,7 @@ export class Queen {
     const spill: number[] = [];
     for (let j = 0; j < sw.count; j++) {
       if (!sw.alive[j]) continue;
+      if (w.death.isHiveTendril(sw.tendril[j])) continue;
       const cur = sw.tendril[j];
       if (quota.has(cur) && (count.get(cur) || 0) < quota.get(cur)!) count.set(cur, (count.get(cur) || 0) + 1);
       else spill.push(j);
@@ -326,6 +349,7 @@ export class Queen {
     // re-home spill: nearest-first to the committed intent so the closest bugs act
     let k = 0;
     for (const j of spill) {
+      if (w.death.isHiveTendril(sw.tendril[j])) continue;
       while (k < ids.length && (count.get(ids[k]) || 0) >= quota.get(ids[k])!) k++;
       const id = k < ids.length ? ids[k] : ids[ids.length - 1];
       sw.tendril[j] = id;
@@ -400,6 +424,27 @@ export class Queen {
 
   refreshGoal(t: Tendril) {
     const w = this.w;
+    if (t.intent === HIVE_INTENT) return; // steered by its hive player
+    if (t.carryTarget) {
+      const dp = w.players.find((p) => p.id === t.carryTarget && p.downed && !p.hive);
+      if (dp) {
+        t.fieldName = 'carry:' + dp.id;
+        t.gx = dp.x;
+        t.gz = dp.z;
+        t.goals = w.goalCellsAt(dp.x, dp.z, 1);
+        return;
+      }
+    }
+    if (t.breakRitual) {
+      const rp = w.players.find((p) => p.id === t.breakRitual && p.hive);
+      if (rp) {
+        t.fieldName = 'ritual';
+        t.gx = rp.hiveX;
+        t.gz = rp.hiveZ;
+        t.goals = w.goalCellsAt(rp.hiveX, rp.hiveZ, 1);
+        return;
+      }
+    }
     const hive = () => {
       t.fieldName = 'hive';
       t.gx = w.layout.hive.x;

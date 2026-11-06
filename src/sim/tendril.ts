@@ -26,6 +26,8 @@ export interface Tendril {
   aliMul: number; // alignment multiplier (conceal: slightly too organised)
   probeAmp: number; // scouts tap into the light and retreat (tolerance oscillation)
   attackDevice: number | null; // fixture this tendril attacks (siege, generator sabotage)
+  breakRitual?: string | null; // hive player whose respawn ritual this tendril breaks up
+  carryTarget?: string | null; // downed player this carrier group lifts
   targetId?: string;
   born: number;
   modeSince: number;

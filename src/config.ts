@@ -170,3 +170,25 @@ export const DIRECTOR = {
     5: { relax: 0, budget: 1.0, maxTendril: 200 },
   } as Record<number, { relax: number; budget: number; maxTendril: number }>,
 };
+
+// Death, the hive and respawn (M4)
+export const DEATH = {
+  carriers: 6, // bugs needed to lift a downed player
+  carrySpeed: 1.3, // m/s toward the queen
+  carryMax: 45, // s: GDD "the trip takes about 45 seconds"
+  devourDist: 3, // m from the queen (hive centre)
+  reviveTime: 3, // s holding E on a downed teammate
+  reviveOverwhelm: 0.5,
+  bodyBugs: 60, // GDD: mass about 60 bugs into a human shape
+  recruitRadius: 3.5,
+  ritualLight: 0.25, // raw light the body must stand in
+  ritualTime: 10, // s of electrocution
+  lightningRitual: 2, // s of progress per lightning hit on the body
+  willDrainResist: 0.15, // per s pushing against orders
+  willDrainLight: 0.08, // per s dragging the body into light
+  willRefill: 0.1, // per s obeying
+  breakBugs: 15, // hostile bugs on the body break the ritual
+  respawnOverwhelm: 0.6, // "re-form as a human at low health"
+  soloZapperPerSec: 6, // solo bug zapper costs more fuel than a teammate's lightning
+  soloGrace: 180, // s a solo player may spend in the hive with a bug zapper before the run fails
+};
