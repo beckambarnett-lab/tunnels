@@ -88,6 +88,9 @@ How to run the browser gates without the dev server reloading them: `npx vite bu
 
 ## Gate results
 
+### Final regression (all browser checks on the final build, run one after another)
+`scripts/gate1.mjs` PASS (bench 1.9 ms CPU/frame at 500 bugs; nest breaches all dark + unseen), `scripts/gate2.mjs` PASS, `scripts/gate3.mjs` PASS, `scripts/night.mjs` PASS, `scripts/gate4.mjs` PASS (see M4). `npm test`: 95 passed.
+
 ### Milestone 5 — full night, vertical slice (self-check; no gate was set for M5)
 GDD gate: "a full night plays from dusk to sunrise". Stand-in: `scripts/night.mjs` drives a solo night in the browser through the game's own systems (teleporting between set pieces instead of walking), plus `tests/run.test.ts` and `tests/night.test.ts` in Node.
 | Beat | Result |
