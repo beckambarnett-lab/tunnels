@@ -38,7 +38,7 @@ export class Fx {
     this.fireGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.maxFire * 3), 3));
     this.firePts = new THREE.Points(
       this.fireGeo,
-      new THREE.PointsMaterial({ size: 0.55, map: tex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+      new THREE.PointsMaterial({ size: 0.38, map: tex, vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }),
     );
     this.firePts.frustumCulled = false;
     scene.add(this.firePts);

@@ -20,6 +20,7 @@ export interface GameOptions {
   bench: boolean;
   bugs: number;
   res?: number;
+  auto?: boolean;
 }
 
 export class Game {
@@ -46,6 +47,7 @@ export class Game {
   frameCount = 0;
   bench: { start: number; samples: number[]; sim: number[]; render: number[]; bugs: number[]; done: boolean; result?: any } | null = null;
   private squealT = 0;
+  debugFire = false; // test hook: hold the trigger
 
   constructor(public canvas: HTMLCanvasElement, public opts: GameOptions) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -105,6 +107,21 @@ export class Game {
       if (len > bestLen) (bestLen = len), (best = a);
     }
     return best;
+  }
+
+  /** Test autopilot (?auto): wander the tunnels and look around, never downed. */
+  private autoT = 0;
+  autopilot(dt: number) {
+    const p = this.me;
+    this.panel.state.god = true;
+    this.autoT -= dt;
+    p.yaw += dt * 0.9 * Math.sin(this.time * 0.13);
+    if (this.autoT <= 0) {
+      this.autoT = 3 + Math.random() * 4;
+      (this as any)._autoDir = this.faceOpen(p.x, p.z) + (Math.random() - 0.5) * 1.5;
+    }
+    const a = (this as any)._autoDir ?? 0;
+    this.ctrl.move(Math.sin(a) * 2 * dt, Math.cos(a) * 2 * dt);
   }
 
   setupBench() {
@@ -168,8 +185,9 @@ export class Game {
     const locked = this.input.locked;
     if (!this.opts.bench) this.ctrl.update(dt, this.input, locked);
     else this.ctrl.update(dt, this.input, false);
+    if (this.opts.auto) this.autopilot(dt);
     // flamethrower
-    me.firing = !me.downed && locked && this.input.mouse.left;
+    me.firing = !me.downed && ((locked && this.input.mouse.left) || this.debugFire);
     if (me.firing) {
       const f = this.ctrl.forward(new THREE.Vector3());
       const o = this.camera.position;

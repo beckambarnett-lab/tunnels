@@ -14,3 +14,7 @@ Pure float determinism across machines and frame rates isn't reliable in JS.
 There is no GPU in the build container; headless Chromium renders WebGL in software.
 **Reading:** the benchmark reports two numbers: measured fps in headless Chromium, and the CPU time per frame for simulation + render submission. The gate counts as passed when sim+submit time fits inside a 16.7 ms frame with headroom (< 8 ms) at 500 bugs; the headless fps is recorded honestly next to it. Real-GPU fps needs a human playtest.
 
+## Q4. "Mass at the edge of the light" when the target has dark all round it.
+A player holding a flashlight lights a cone ahead; behind them there's no light edge at all, so pure light-edge massing would let a non-striking tendril walk right up to their back.
+**Reading:** massing tendrils also keep a stand-off distance (3.5 m) from their goal point and wait there in the dark; striking tendrils close in. The light edge still stops them wherever light is nearer.
+

@@ -60,6 +60,9 @@ export class World {
   private visTimer = 0;
   rng: Rng;
   timings = { light: 0, vis: 0, queen: 0, fields: 0, swarm: 0, fire: 0, total: 0 };
+  /** Audit of every breach: was the spot dark and unseen when it opened? (gate check) */
+  breachLog: { t: number; kind: string; cell: number; seen: boolean; raw: number }[] = [];
+  digCount = 0;
 
   constructor(opts: WorldOptions = {}) {
     this.seed = opts.seed ?? 1;
@@ -73,6 +76,10 @@ export class World {
     this.fire = new Fire();
     this.queen = opts.noQueen ? null : new Queen(this);
     this.targetBugs = opts.bugs ?? SWARM.defaultBugs;
+    this.events.on('breach', (e) =>
+      this.breachLog.push({ t: this.time, kind: e.kind, cell: e.cell, seen: this.vis.isSeen(e.cell), raw: this.light.surfaceRaw(e.cell) }),
+    );
+    this.events.on('dig', () => this.digCount++);
     for (let k = 0; k < 96; k++) this.burnLights.push(makeLight('burn', { radius: 1.8, intensity: 0.9, on: false, y: 0.3 }));
   }
 
