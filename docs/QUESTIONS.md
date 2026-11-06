@@ -65,3 +65,7 @@ The GDD's night is 1–2 hours across hundreds of tunnel segments. **Reading for
 GDD: "Resisting is hard … Giving in and betraying your friends is always the easier choice." With full loss of control at zero will, the respawn ritual became impossible whenever the queen's order pointed away from the camp (her Relax-phase "Come home" lasts 30–75 s).
 **Reading:** resisting drains will at 0.09/s (light 0.05/s), obeying refills 0.1/s; at zero will your bugs go three-quarters of the way toward her goal (you keep a quarter of the control); while your body is being electrocuted her pull is suspended. In testing the ritual takes about 1–2 minutes with a teammate who keeps the camp lit and the body defended.
 
+## Q18. The base's cable "run down from the house".
+GDD: at the end of act 1 the hive chews through the mains and the house goes dark; later "the base: a power cable run down from the house is its lifeline and its light, and the hive targets it".
+**Reading:** the house's mains are dead, so the lifeline is the team's own generator: carry it down (or leave it in the house and run cable down through the basement). Either way the cable is what the hive's Sabotage goes for. There is no separate mains object.
+
