@@ -152,6 +152,8 @@ Q2 (sync = local steering + keyframes), Q11 (solo hive failure), Q12 (gear drops
 - **Act 1**: the job (zap 8 bugs; the sprayer is gloriously useless), flashlights in the bathroom cupboard, the boss on the radio, the Xterminator's jingle; then the power dies and the basement floor breaks open.
 - **The ladder**: fuel tanks turn sprayers into flamethrowers; oil rigs refuel once (+350, +500); Enlite suits make you faster with a bigger flame and let you dig (X); the lightning gun waits at the intersection.
 - **The boss**: burn her five egg sacs to fill her rage; then the truck starts.
+- **Flares**: thrown real fire for 30 s, found in the nest; the director drops one ahead of a struggling team.
+- **The bad ending loop**: if the truck is stopped, C replays the finale inside the swarm's mind (green-tinted, ENLITE — FOREVER); finishing it gives the hollow ending.
 - **The finale**: the Enlite digging truck (fast in open tunnel, slow while digging), roles by player count, the queen stampeding after you, queen-keeper knock-aside / stun, x-ray map for the driver; bursting into the house at sunrise kills her. True ending, or the hollow ending if the run used a checkpoint.
 
 ### Playtest this
@@ -165,7 +167,7 @@ Title screen → *Play solo*. Or `?night&seed=2`. Zap 8 bugs in the house, grab 
 - Hive tunnels are one cell (0.5 m) wide, so players usually can't follow bugs through them. Enlite-suit digging (X) opens one cell at a time.
 - With the test autopilot (god mode, never fights back) the director's Peak Fade ends by its 30 s timeout rather than by the fight resolving.
 - In-game text is placeholder; the boss radio is subtitles plus static (no voice).
-- Not built: the bad ending's "replay the finale inside the swarm's mind" (the hollow ending is a screen), flares, the hive voice for hive players over tabs (voice is online-only), between-run meta-progression.
+- Not built: the hive voice for hive players over tabs (voice is online-only), between-run meta-progression. The "swarm's mind" replay is a tinted rerun of the same truck drive, not a distinct space.
 
 ## What I'd do next
 1. Playtest the M3 gate for real: can people read the queen's plan from her tells? Tune the sound signatures and the intent mix from that.

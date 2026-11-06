@@ -68,6 +68,7 @@ export class Game {
   pristine: Uint8Array;
   night: NightMesh | null = null;
   sun: THREE.DirectionalLight | null = null;
+  mindTint = false;
   private lastAct = 0;
   private actCardT = 0;
   toast = '';
@@ -396,9 +397,20 @@ export class Game {
       radio,
       ending: f?.ending ?? null,
       failed: w.runState === 'failed',
-      hasCheckpoint: !!readBrowserSave('tunnels-checkpoint'),
+      hasCheckpoint: !!readBrowserSave('tunnels-checkpoint') || f?.state === 'lost',
+      mind: !!f?.mind && f.state === 'driving',
     });
-    if (w.runState === 'failed' && this.input.hit('KeyC')) location.href = location.pathname + '?night&load=checkpoint';
+    if (w.runState === 'failed' && this.input.hit('KeyC')) {
+      // a failed finale continues inside the swarm's mind (host / solo); otherwise from the last checkpoint
+      if (f && f.state === 'lost' && (!this.session || this.session.isHost)) f.replayInMind();
+      else if (!f || f.state !== 'lost') location.href = location.pathname + '?night&load=checkpoint';
+    }
+    // inside the swarm's mind: the world as the hive sees it, Enlite branding bleeding through
+    if (f?.mind && f.state === 'driving') {
+      this.lights.ambient.intensity = 0.5;
+      this.lights.ambient.color.setHex(0x7a8a50);
+      this.mindTint = true;
+    }
   }
 
   /** WASD as a world-space direction (used to steer your bugs while you're in the hive). */

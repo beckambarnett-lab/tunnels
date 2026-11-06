@@ -210,3 +210,36 @@ describe('finale roles by player count (GDD, Decided)', () => {
     expect(f.isKeeper('p0')).toBe(false);
   });
 });
+
+describe('the bad ending loop', () => {
+  it('a stopped truck can be replayed inside the swarm\'s mind; finishing it gives the hollow ending', () => {
+    const w = new World({ seed: 2, night: true, bugs: 100 });
+    const L = w.layout as NightLayout;
+    const p = w.addPlayer('local', L.start.x, L.start.z);
+    const orig = console.log;
+    console.log = () => {};
+    try {
+      for (const i of L.plugCells) w.grid.cells[i] = 0;
+      w.run!.rage = 1;
+      const tm = L.marks.find((m) => m.kind === 'truck')!;
+      p.x = tm.x;
+      p.z = tm.z;
+      applyInput(w, p, { ...emptyInput(), interactPressed: true, interact: true }, 1 / 20);
+      w.finale!.truck.hp = 0.001;
+      run(w, 5);
+      expect(w.runState).toBe('failed');
+      w.finale!.replayInMind();
+      expect(w.finale!.mind).toBe(true);
+      expect(w.runState).toBe('playing');
+      let sun: any = null;
+      w.events.on('sunrise', (e) => (sun = e));
+      run(w, 240, () => {
+        p.hiveMove = [-1, 0];
+        w.finale!.truck.hp = 1;
+      });
+      expect(sun?.ending).toBe('hollow');
+    } finally {
+      console.log = orig;
+    }
+  }, 240000);
+});

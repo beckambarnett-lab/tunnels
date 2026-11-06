@@ -83,7 +83,7 @@ export class Hud {
   private nightEl: HTMLElement | null = null;
   private cardEl: HTMLElement | null = null;
   private endEl: HTMLElement | null = null;
-  updateNight(n: { card: string; goal: string; zone: string; radio: string; ending: string | null; failed: boolean; hasCheckpoint: boolean }) {
+  updateNight(n: { card: string; goal: string; zone: string; radio: string; ending: string | null; failed: boolean; hasCheckpoint: boolean; mind?: boolean }) {
     if (!this.nightEl) {
       this.nightEl = document.createElement('div');
       this.nightEl.className = 'nighthud';
@@ -94,7 +94,8 @@ export class Hud {
       this.root.append(this.nightEl, this.cardEl, this.endEl);
     }
     this.nightEl.innerHTML = `<div class="zone">${n.zone}</div><div class="goal">${n.goal}</div>${n.radio ? `<div class="radio">📻 ${n.radio}</div>` : ''}`;
-    this.cardEl!.textContent = n.card;
+    this.cardEl!.textContent = n.mind ? 'ENLITE  —  FOREVER' : n.card;
+    this.root.classList.toggle('mind', !!n.mind);
     this.cardEl!.style.opacity = n.card ? '1' : '0';
     if (n.ending) {
       this.endEl!.style.display = 'flex';
@@ -104,7 +105,7 @@ export class Hud {
           : '<div class="big">SUNRISE?</div><div>The light is a glare. Your voices come out of the bugs. You have done this before.</div><div class="small">The hollow ending: this run used a checkpoint. Only a full night without one earns the real sunrise.</div>';
     } else this.endEl!.style.display = 'none';
     if (n.failed && this.failEl)
-      this.failEl.innerHTML = `<div class="big">THE NIGHT IS LOST</div><div>${(this as any)._reason ?? ''}</div><div class="small">Enter: restart the whole night (the true ending is still possible)${n.hasCheckpoint ? '<br>C: continue from the last checkpoint (the run can then only end badly)' : ''}</div>`;
+      this.failEl.innerHTML = `<div class="big">THE NIGHT IS LOST</div><div>${(this as any)._reason ?? ''}</div><div class="small">Enter: restart the whole night (the true ending is still possible)${n.hasCheckpoint ? '<br>C: continue (from the last checkpoint, or, if the truck was stopped, inside the swarm’s mind). The run can then only end badly' : ''}</div>`;
   }
 
   private pauseEl: HTMLElement | null = null;

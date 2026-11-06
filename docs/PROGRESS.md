@@ -65,9 +65,11 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - 5.1 Night layout (`src/sim/night.ts`): house → base → nest → intersection → nest → oil rig → deep nest → junkyard → queen's chamber, side loops; zones + marks + swarm pockets. Test: `tests/night.test.ts`.
 - 5.2 Run structure (`src/sim/run.ts`): acts by progress, checkpoints (autosaved to `tunnels-checkpoint`), failure screen (Enter restart / C continue from checkpoint).
 - 5.3 Act 1 house: job (8 zaps), flashlights, jingle, boss radio, power dies, basement plug opens.
-- 5.4 Fuel tanks → flamethrower, oil rigs (+350/+500), lightning gun at the intersection. (Junk mods not done.)
+- 5.4 Fuel tanks → flamethrower, oil rigs (+350/+500), lightning gun at the intersection.
 - 5.5 Junkyard: Enlite suits (speed, flame range, X to dig), logo decals; queen's chamber egg sacs → rage.
 - 5.6 Finale (`src/sim/finale.ts`): truck, roles, queen chase, keeper powers, x-ray, sunrise; true / hollow endings. Test: `tests/run.test.ts`.
+- Flares (thrown real fire, 30 s; director places one ahead of a struggling team). Junk mods (hubcap, hose, Christmas lights).
+- Bad ending loop: a stopped truck → C replays the finale inside the swarm's mind → hollow ending.
 - 5.7 Art/audio pass: zone palettes, jingle, radio static, sunrise chord. (No real dusk/sunrise lighting yet.)
 
 ## In progress

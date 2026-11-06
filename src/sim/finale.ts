@@ -22,6 +22,9 @@ export class Finale {
   roles = new Map<string, Role>();
   startedAt = 0;
   ending: 'true' | 'hollow' | null = null;
+  mind = false; // replaying the finale inside the swarm's mind (the bad ending loop)
+  replays = 0;
+  private start0 = { truck: { x: 0, z: 0 }, queen: { x: 0, z: 0 } };
 
   constructor(public w: World) {
     const tm = (w.layout as any).marks?.find((m: any) => m.kind === 'truck');
@@ -31,6 +34,7 @@ export class Finale {
     }
     this.queen.x = w.layout.hive.x;
     this.queen.z = w.layout.hive.z;
+    this.start0 = { truck: { x: this.truck.x, z: this.truck.z }, queen: { x: this.queen.x, z: this.queen.z } };
     w.events.on('boardTruck', () => this.start());
   }
 
@@ -189,6 +193,33 @@ export class Finale {
     }
   }
 
+  /**
+   * The bad ending (GDD): failing the finale makes the team part of the entity; they replay the
+   * finale inside the swarm's mind until they complete it. Only the hollow ending is left.
+   */
+  replayInMind() {
+    const w = this.w;
+    this.mind = true;
+    this.replays++;
+    w.usedSave = true;
+    w.runState = 'playing';
+    w.failReason = '';
+    this.truck = { x: this.start0.truck.x, z: this.start0.truck.z, yaw: -Math.PI / 2, hp: TRUCK.hp, speed: 0, digging: false };
+    this.queen = { x: this.start0.queen.x, z: this.start0.queen.z, stun: 0, rage: 1, alive: true, speedMul: 1 };
+    this.energy = 0;
+    this.state = 'driving';
+    for (const p of w.players) {
+      if (!p.alive) continue;
+      p.hive = false;
+      p.downed = false;
+      p.riding = true;
+      p.overwhelm = 0.3;
+    }
+    this.assignRoles(w.players.filter((p) => p.alive));
+    console.log(`[finale t=${w.time.toFixed(1)}] the team is part of the entity now. Replaying the finale inside the swarm's mind (#${this.replays})`);
+    w.events.emit('mindReplay', { n: this.replays });
+  }
+
   win() {
     const w = this.w;
     this.state = 'won';
@@ -208,8 +239,9 @@ export class Finale {
     this.energy = s.energy;
     this.roles = new Map(s.roles);
     this.ending = s.ending;
+    this.mind = !!s.mind;
   }
   get stateMsg() {
-    return { state: this.state, truck: this.truck, queen: this.queen, energy: this.energy, roles: [...this.roles], ending: this.ending };
+    return { state: this.state, truck: this.truck, queen: this.queen, energy: this.energy, roles: [...this.roles], ending: this.ending, mind: this.mind };
   }
 }
