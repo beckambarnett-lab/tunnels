@@ -140,6 +140,12 @@ export class Game {
       }
     }
     this.pristine = pristine;
+    // a fresh night starts with no checkpoint (so "continue" can never load another run's)
+    if (this.world.run && role !== 'client' && !opts.load) {
+      try {
+        localStorage.removeItem('tunnels-checkpoint');
+      } catch {}
+    }
     // checkpoints at milestone spaces and oil rigs (host / solo)
     if (this.world.run && role !== 'client')
       this.world.run.onCheckpoint = (name) => {
@@ -600,7 +606,7 @@ export class Game {
   updateOverlay(dt: number, simMs: number) {
     const w = this.world, sw = w.swarm, st = sw.stats, tm = w.timings;
     this.overlay.update(dt, () => [
-      `bugs ${sw.active} / target ${w.targetBugs}  drawn ${this.bugs.drawn}  sim'd ${st.simulated}`,
+      `seed ${w.seed}  bugs ${sw.active} / target ${w.targetBugs}  drawn ${this.bugs.drawn}  sim'd ${st.simulated}`,
       `states  mass ${st.mass}  strike ${st.strike}  flow ${st.flow}  burn ${st.burn}  under ${st.under}  dig ${st.digging}  inLight ${st.inLight}`,
       `sim ${simMs.toFixed(2)} ms (light ${tm.light.toFixed(2)} vis ${tm.vis.toFixed(2)} swarm ${tm.swarm.toFixed(2)} fire ${tm.fire.toFixed(2)})  render ${this.renderMs.toFixed(2)} ms`,
       `fields ${w.fields.fields.size}  builds ${w.fields.stats.builds}  worker ${w.fields.stats.avgMs.toFixed(1)} ms  tendrils ${w.tendrils.size}  players ${w.players.length}`,

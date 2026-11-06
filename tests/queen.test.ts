@@ -1,3 +1,4 @@
+import { makeLight } from '../src/sim/light';
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/sim/world';
 import { asciiLayout } from './helpers';
@@ -199,4 +200,26 @@ describe('queen intents: each one runs and shows its tell', () => {
     expect(told).toBe(true);
     expect(mean()).toBeGreaterThan(before + 5);
   }, 60000);
+});
+
+describe('attack openings', () => {
+  it('standing against an unlit wall is an opening; standing in the open, lit all round, is not', () => {
+    // three rows of diggable earth along the top, then open floor
+    const rows = Array.from({ length: 20 }, (_, y) => (y < 3 ? '#' : '.').repeat(30));
+    const w = new World({ layout: asciiLayout(rows), bugs: -1 });
+    const p = w.addPlayer('p', 15 * CELL, 10 * CELL);
+    p.slots[0] = newItem('flashlight');
+    // lit all round, nowhere near a wall
+    w.staticLights.push(makeLight('lamp', { x: 15 * CELL, z: 10 * CELL, radius: 6, intensity: 1.2 }));
+    w.step(1 / 20);
+    expect(w.queen!.opening(p)).toBe(false);
+    // back against the dark top wall (the room's edge is earth), flashlight pointing away
+    w.staticLights.length = 0;
+    p.x = 15 * CELL;
+    p.z = 4.6 * CELL; // first open row; the earth wall is right behind
+    p.yaw = 0; // facing +z, wall behind
+    p.lastFired = w.time; // flamethrower just fired, so a dark back alone wouldn't count
+    w.step(1 / 20);
+    expect(w.queen!.opening(p)).toBe(true);
+  });
 });

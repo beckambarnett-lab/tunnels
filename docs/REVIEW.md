@@ -23,7 +23,7 @@ git clone tunnels.bundle tunnels
 | 4 Multiplayer and the hive | gate passed (two tabs, 10 min, hive death + respawn) | `milestone-4` |
 | 5 The full night | vertical slice: every act and beat once, dusk to sunrise, both endings | `milestone-5-slice` |
 
-98 Node tests (`npm test`), 5 browser checks (`scripts/gate1-4.mjs`, `scripts/night.mjs`). Biggest unknowns: real-GPU fps, online (WebRTC) play and voice. None could be measured in this container.
+100 Node tests (`npm test`), 5 browser checks (`scripts/gate1-4.mjs`, `scripts/night.mjs`). Biggest unknowns: real-GPU fps, online (WebRTC) play and voice. None could be measured in this container.
 
 ## How to run
 ```bash
@@ -160,6 +160,9 @@ Q2 (sync = local steering + keyframes), Q11 (solo hive failure), Q12 (gear drops
 
 ### Playtest this
 Title screen → *Play solo*. Or `?night&seed=2`. Zap 8 bugs in the house, grab a flashlight, go down when the floor opens, set up a base, push east: tanks at the crossroads, a rig, suits in the rusted junkyard, egg sacs in the chamber, then the truck: hold W/A/S/D toward the west (where you came from) and RMB for x-ray.
+
+## Audit fixes
+Re-reading the GDD turned up four rule bugs, now fixed: fuel running out didn't end the run; standing against an unlit wall wasn't an opening; every run used the same map (seed 1); there was no checkpoint at the truck. See PROGRESS.md.
 
 ## Known bugs and rough edges (all milestones)
 - **fps on a real GPU is unmeasured.** The container has no GPU; CPU per frame is 2 ms at 500 bugs, but please run `?bench` and read the FPS line.

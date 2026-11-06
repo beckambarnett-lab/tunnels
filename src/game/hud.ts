@@ -135,7 +135,7 @@ export class Hud {
     }
     this.slotsEl.innerHTML = html;
     const extra = p.tethered ? '\nCable at full length — reel in (alternate LMB/RMB)' : '';
-    this.promptEl.textContent = (f.out ? 'FUEL OUT — the run has failed (debug: keep playing)\n' : '') + prompt + extra;
+    this.promptEl.textContent = prompt + extra;
   }
 
   update(p: SimPlayer, time: number, extra: { locked: boolean }) {

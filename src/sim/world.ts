@@ -158,6 +158,10 @@ export class World {
       this.breachLog.push({ t: this.time, kind: e.kind, cell: e.cell, seen: this.vis.isSeen(e.cell), raw: this.light.surfaceRaw(e.cell) }),
     );
     this.events.on('dig', () => this.digCount++);
+    // GDD: the shared fuel running out is a failure (the host decides; clients mirror runState)
+    this.events.on('fuelOut', () => {
+      if (this.authority && this.runState === 'playing') this.death.fail('the shared fuel ran out');
+    });
     for (let k = 0; k < 96; k++) this.burnLights.push(makeLight('burn', { radius: 1.8, intensity: 0.9, on: false, y: 0.3 }));
   }
 

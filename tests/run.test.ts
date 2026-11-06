@@ -243,3 +243,22 @@ describe('the bad ending loop', () => {
     }
   }, 240000);
 });
+
+describe('checkpoints (GDD list)', () => {
+  it('flashlights, the intersection, the suits, the truck and every oil rig; not the junkyard', () => {
+    const { w, L, p, restore } = night();
+    try {
+      const saved: string[] = [];
+      w.run!.onCheckpoint = (n) => saved.push(n);
+      for (const k of ['tank', 'suit', 'truck']) {
+        at(p, L.marks.find((m) => m.kind === k)!);
+        run(w, 0.3, () => (p.overwhelm = 0));
+      }
+      w.run!.useMark(p, L.marks.find((m) => m.kind === 'rig')!);
+      expect(saved).toEqual(expect.arrayContaining(['the intersection', 'the truck', 'oil rig 1']));
+      expect(saved).not.toContain('the junkyard');
+    } finally {
+      restore();
+    }
+  });
+});

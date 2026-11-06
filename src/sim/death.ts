@@ -47,6 +47,7 @@ export class Death {
 
   fail(reason: string) {
     const w = this.w;
+    if (w.runState !== 'playing') return;
     w.runState = 'failed';
     w.failReason = reason;
     w.events.emit('runFailed', { reason });

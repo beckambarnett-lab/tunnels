@@ -72,8 +72,19 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - Bad ending loop: a stopped truck → C replays the finale inside the swarm's mind → hollow ending.
 - 5.7 Art/audio pass: zone palettes, jingle, radio static, sunrise chord. (No real dusk/sunrise lighting yet.)
 
+### Audit fixes (after re-reading the GDD)
+- Running out of shared fuel now fails the run and shows the failure screen (it only showed a HUD line before). `scripts/check-fuelout.mjs`.
+- "Someone stands against an unlit wall" is now an attack opening (the check used to treat a wall at your back as safe).
+- A new nest layout every run: random seed unless `?seed=N`; the seed is in the debug overlay; loading a save or checkpoint rebuilds the saved seed; a fresh night clears the previous run's checkpoint.
+- Checkpoints follow the GDD list: flashlights, the intersection, the suits, the truck, and every oil rig (the extra junkyard checkpoint is gone).
+
 ## In progress
 - (none)
+
+## Next (agreed order)
+1. Missing attack openings (a light flickers or dies, a wire is cut) and the generator's sputter.
+2. Comedy pass (cable tripping, boss radio as a character, branded jumpsuits and van, house dressing) and lore clues.
+3. Length: more segments, rigs and act content, a real truck chase.
 
 How to run the browser gates without the dev server reloading them: `npx vite build --outDir dist-gate && npx vite preview --outDir dist-gate --port 4174`, then `BASE=http://localhost:4174/ node scripts/gateN.mjs`.
 

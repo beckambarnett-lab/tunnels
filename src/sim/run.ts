@@ -160,7 +160,9 @@ export class Run {
     if (this.furthest >= 3) this.setAct(3, 'the team left the base behind');
     if (zones.has(Z.junkyard) || this.furthest >= 7) this.setAct(4, 'rusted logos: the ruins of Enlite');
     if (zones.has(Z.intersection)) this.checkpoint('the intersection');
-    if (zones.has(Z.junkyard)) this.checkpoint('the junkyard');
+    // milestone spaces (GDD): flashlights, the intersection, the suits, the truck (+ every oil rig)
+    const truck = this.L.marks.find((m) => m.kind === 'truck');
+    if (truck && alive.some((p) => Math.hypot(p.x - truck.x, p.z - truck.z) < 6)) this.checkpoint('the truck');
     // act 1: the job, flashlights, the power dies, the basement opens
     if (this.act === 1) {
       const hasLight = w.players.some((p) => p.slots.some((s) => s?.kind === 'flashlight'));

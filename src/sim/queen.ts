@@ -66,9 +66,28 @@ export class Queen {
     if (w.light.effAt(p.x, p.z) < SWARM.tolerance) return true; // standing in the dark
     const others = w.players.filter((q) => q !== p && q.alive && !q.downed);
     if (others.length && Math.min(...others.map((q) => Math.hypot(q.x - p.x, q.z - p.z))) > 12) return true; // alone
-    const bx = p.x - Math.sin(p.yaw) * 1.0, bz = p.z - Math.cos(p.yaw) * 1.0;
-    const back = w.grid.isOpenAt(bx, bz) ? w.light.effAt(bx, bz) : 1;
-    return back < SWARM.tolerance && w.time - p.lastFired > 1.5; // dark back, flamethrower silent
+    // someone stands against an unlit wall (GDD): earth right behind or beside them with a dark face
+    const g = w.grid;
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    const own = g.cellAt(p.x, p.z);
+    for (const [dx, dz] of [[-fx, -fz], [-fz, fx], [fz, -fx]]) {
+      const c = g.cellAt(p.x + dx * 0.7, p.z + dz * 0.7);
+      if (c < 0 || g.cells[c] !== 1) continue;
+      // the wall's own light, not counting the cell the player stands in (their light starts there)
+      const x = c % g.w, y = (c / g.w) | 0;
+      let lit = 0;
+      for (let oy = -1; oy <= 1; oy++)
+        for (let ox = -1; ox <= 1; ox++) {
+          if (!g.inBounds(x + ox, y + oy)) continue;
+          const j = (y + oy) * g.w + x + ox;
+          if (j !== own && g.cells[j] === 0) lit = Math.max(lit, w.light.raw[j]);
+        }
+      if (lit < LIGHT.darkThreshold * 2) return true;
+    }
+    // their back is in the dark and the flamethrower has gone quiet
+    const bx = p.x - fx * 1.0, bz = p.z - fz * 1.0;
+    const back = g.isOpenAt(bx, bz) ? w.light.effAt(bx, bz) : 1;
+    return back < SWARM.tolerance && w.time - p.lastFired > 1.5;
   }
 
   litDevices(): Device[] {

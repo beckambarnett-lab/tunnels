@@ -3,10 +3,12 @@ import { SWARM } from './config';
 import { showLobby, LobbyChoice } from './game/lobby';
 import { LocalTransport, PeerTransport, Transport } from './net/transport';
 import { NetSession } from './net/session';
+import { readBrowserSave } from './net/save';
 
 const q = new URLSearchParams(location.search);
 const base = {
-  seed: +(q.get('seed') || 1),
+  // GDD: a new nest layout every run (?seed=N to replay a specific one)
+  seed: q.has('seed') ? +q.get('seed')! : 1 + Math.floor(Math.random() * 999999),
   bench: q.has('bench'),
   bugs: +(q.get('bugs') || SWARM.defaultBugs),
   auto: q.has('auto'),
@@ -15,6 +17,11 @@ const base = {
   load: q.has('load') ? q.get('load') || true : false,
   night: q.has('night'),
 };
+// continuing a save or checkpoint: rebuild the same nest it was saved in
+if (base.load) {
+  const sv = readBrowserSave(base.load === 'checkpoint' ? 'tunnels-checkpoint' : undefined);
+  if (sv?.snap?.seed) base.seed = sv.snap.seed;
+}
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 
 async function start() {

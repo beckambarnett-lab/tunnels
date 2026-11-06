@@ -69,6 +69,8 @@ describe('fuel', () => {
     w.fuel.drain(FUEL.start - 0.01, 'test');
     step(w, 2);
     expect(out).toBe(true);
+    expect(w.runState).toBe('failed');
+    expect(w.failReason).toContain('fuel');
     w.camp.computePower();
     expect(gen.powered).toBe(false);
   });
