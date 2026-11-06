@@ -62,3 +62,6 @@ canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: blo
 #errors .eh { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: #fdd; }
 #errors button { background: #311; color: #fcc; border: 1px solid #733; font: inherit; cursor: pointer; }
 #errors pre { white-space: pre-wrap; margin: 0 0 8px; user-select: text; }
+body.freemouse, body.freemouse canvas#game { cursor: crosshair; }
+#hud .hint { left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 80vw); line-height: 1.5; }
+#hud .hint:not(:empty) { background: rgba(0, 0, 0, 0.62); padding: 8px 12px; border-radius: 4px; color: #ddd; }

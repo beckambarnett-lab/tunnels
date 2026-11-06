@@ -474,6 +474,7 @@ export class Game {
     this.handleKeys();
     const me = this.me;
     const locked = this.input.locked;
+    this.input.tick(dt, this.ctrl.sens);
     if (!this.opts.bench) this.ctrl.update(dt, this.input, locked);
     else this.ctrl.update(dt, this.input, false);
     if (this.opts.auto) this.autopilot(dt);
@@ -528,7 +529,12 @@ export class Game {
     }
     this.renderer.render(this.scene, top ? this.topCam : this.camera);
     this.renderMs = performance.now() - r0;
-    this.hud.update(me, this.time, { locked: locked || this.opts.bench, lockError: this.input.lockError });
+    const inp0 = this.input;
+    const freeNote =
+      inp0.free && performance.now() - inp0.freeSince < 12000
+        ? `${inp0.lockError ? inp0.lockError + '.\n' : ''}Playing without mouse capture: move the mouse to look, hold it near the left or right edge to keep turning (arrow keys turn too). Esc releases.`
+        : '';
+    this.hud.update(me, this.time, { locked: locked || this.opts.bench, lockError: inp0.lockError, freeNote });
     this.toastT -= dt;
     this.hud.updateCamp(this.world, me, (this.toastT > 0 ? this.toast + '\n' : '') + promptFor(this.world, me, findTarget(this.world, me)));
     this.map.draw(this.world, me.id, this.time);
