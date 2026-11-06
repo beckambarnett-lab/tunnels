@@ -15,6 +15,9 @@ import { Camp, Item } from './camp';
 import { Learning } from './learning';
 import { Director } from './director';
 import { Death, HIVE_INTENT } from './death';
+import { generateNight, NightLayout } from './night';
+import { Run } from './run';
+import { Finale } from './finale';
 
 export interface SimPlayer {
   id: string;
@@ -62,6 +65,9 @@ export interface SimPlayer {
   walkieTalking: boolean; // holding V with a walkie-talkie
   loudAt: number; // last time their mic was loud (voice as noise)
   peerId: string; // WebRTC peer id (voice calls)
+  suit: boolean; // wearing an Enlite suit (faster, bigger flame, can dig)
+  riding: boolean; // in the digging truck (finale)
+  digT: number;
 }
 
 export type RunState = 'playing' | 'failed' | 'won';
@@ -77,6 +83,8 @@ export interface WorldOptions {
   noQueen?: boolean;
   /** solo / host run everything; a client only runs bug bodies, light and fields locally */
   role?: Role;
+  /** the full night (M5): house, base, nest, junkyard, queen */
+  night?: boolean;
 }
 
 /** Owns every simulation system and steps them in order. No rendering in here. */
@@ -101,6 +109,8 @@ export class World {
   learning: Learning;
   director: Director;
   death: Death;
+  run: Run | null = null;
+  finale: Finale | null = null;
   debugBreaches = true; // debug panel switch
   voiceNoise = true; // GDD: loud talking registers on the queen's opportunity map (on by default)
   tendrils = new Map<number, Tendril>();
@@ -121,7 +131,7 @@ export class World {
     this.seed = opts.seed ?? 1;
     this.role = opts.role ?? 'solo';
     this.rng = new Rng(this.seed * 31 + 7);
-    this.layout = opts.layout ?? generateWorld(this.seed);
+    this.layout = opts.layout ?? (opts.night ? generateNight(this.seed) : generateWorld(this.seed));
     this.grid = this.layout.grid;
     this.light = new LightMap(this.grid);
     this.vis = new Visibility(this.grid);
@@ -133,6 +143,10 @@ export class World {
     this.learning = new Learning(this);
     this.director = new Director(this);
     this.death = new Death(this);
+    if (opts.night) {
+      this.run = new Run(this, this.layout as NightLayout);
+      this.finale = new Finale(this);
+    }
     this.queen = opts.noQueen || this.role === 'client' ? null : new Queen(this);
     this.targetBugs = opts.bugs ?? SWARM.defaultBugs;
     this.events.on('breach', (e) =>
@@ -187,6 +201,9 @@ export class World {
       walkieTalking: false,
       loudAt: -100,
       peerId: '',
+      suit: false,
+      riding: false,
+      digT: 0,
     };
     this.players.push(p);
     return p;
@@ -298,11 +315,13 @@ export class World {
     for (const p of this.players) {
       if (!p.firing || !p.alive || p.downed || p.hive) continue;
       const [ax, ay, az] = p.aim, [ex, ey, ez] = p.eye;
-      this.fire.emit(ex + ax * 0.5, ey - 0.35, ez + az * 0.5, ax, ay, az, dt);
+      this.fire.emit(ex + ax * 0.5, ey - 0.35, ez + az * 0.5, ax, ay, az, dt, p.suit ? 1.4 : 1); // suits: larger flame
     }
     this.fire.step(dt, this);
     this.timings.fire = T(t);
     if (this.authority) {
+      this.run?.step(dt);
+      this.finale?.step(dt);
       this.camp.step(dt);
       this.stepPlayers(dt);
       this.death.step(dt);

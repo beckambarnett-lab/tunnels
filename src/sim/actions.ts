@@ -13,6 +13,7 @@ export interface PlayerInput {
   drop: boolean; // Q pressed
   repair: boolean; // R held
   stomp: boolean; // Space pressed
+  dig?: boolean; // X held (Enlite suit)
   slot: number; // -1 none, else 0..2
   scroll: number;
   aim: [number, number, number]; // look direction
@@ -40,7 +41,8 @@ export type Target =
   | { kind: 'floor'; fi: FloorItem; d: number }
   | { kind: 'wire'; wire: Wire; d: number; end: boolean }
   | { kind: 'bodies'; n: number; d: number }
-  | { kind: 'player'; p: SimPlayer; d: number };
+  | { kind: 'player'; p: SimPlayer; d: number }
+  | { kind: 'mark'; m: any; d: number };
 
 /** What E would act on: the nearest interactable roughly in front of the player. */
 export function findTarget(w: World, p: SimPlayer): Target | null {
@@ -61,6 +63,8 @@ export function findTarget(w: World, p: SimPlayer): Target | null {
   };
   for (const dev of w.camp.devices) consider(dev.x, dev.z, (d) => ({ kind: 'device', dev, d }));
   for (const q of w.players) if (q !== p && q.alive && q.downed && !q.hive) consider(q.x, q.z, (d) => ({ kind: 'player', p: q, d }), -0.5);
+  const mk = w.run?.markInReach(p);
+  if (mk) consider(mk.x, mk.z, (d) => ({ kind: 'mark', m: mk, d }), -0.4);
   for (const fi of w.camp.floor) consider(fi.x, fi.z, (d) => ({ kind: 'floor', fi, d }), -0.1);
   for (const wr of w.camp.wires) {
     if (wr.layer) continue;
@@ -91,6 +95,13 @@ export function promptFor(w: World, p: SimPlayer, t: Target | null): string {
   if (cut) lines.push(`Hold R: repair cut cable${p.repairT > 0 ? ` (${Math.round((p.repairT / CAMP.repairTime) * 100)}%)` : ''}`);
   if (t) {
     if (t.kind === 'floor') lines.push(`E: pick up ${ITEM_NAMES[t.fi.item.kind]}${t.fi.item.kind === 'generator' && !c.allSlotsFree(p) ? ' (needs all 3 slots empty)' : ''}`);
+    if (t.kind === 'mark') {
+      const m = t.m;
+      if (m.kind === 'rig') lines.push(`E: tap the oil rig (+${m.data?.fuel ?? 300} fuel)`);
+      if (m.kind === 'tank') lines.push(p.slots.some((s) => s?.kind === 'sprayer') ? 'E: strap the fuel tank onto your sprayer (it becomes a flamethrower)' : 'Fuel tank (needs a bug sprayer in your slots)');
+      if (m.kind === 'suit') lines.push(p.suit ? 'Enlite suit (you are wearing one)' : 'E: put on the Enlite suit (faster, bigger flame, dig with X)');
+      if (m.kind === 'truck') lines.push((w.run?.rage ?? 0) >= 1 ? 'E: get in the digging truck!' : 'An Enlite digging truck. It will not start while the queen sleeps.');
+    }
     if (t.kind === 'player') lines.push(`Hold E: revive ${t.p.id}${t.p.reviveT > 0 ? ` (${Math.round((t.p.reviveT / 3) * 100)}%)` : ''}${t.p.carriedT > 0 ? ' — they are being carried off!' : ''}`);
     if (t.kind === 'bodies') lines.push(`E: harvest hive oil (${t.n} bodies, +${t.n * FUEL.oilPerBody})`);
     if (t.kind === 'wire') lines.push(t.end ? 'E: pick up cable end' : 'E: coil cable onto a spool');
@@ -123,6 +134,17 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
     if (inp.slot >= 0) p.sel = inp.slot;
     if (inp.scroll) p.sel = (p.sel + (inp.scroll > 0 ? 1 : 2)) % 3;
   }
+  // in the truck: the queen-keeper spends charge; gunners (and a solo driver) burn with the flamethrower
+  if (p.riding && w.finale) {
+    w.finale.input(p, inp.usePressed, inp.altPressed);
+    const role = w.finale.roles.get(p.id);
+    const fl = p.slots.find((s) => s?.kind === 'flamethrower');
+    if (inp.use && fl && (role === 'gunnerL' || role === 'gunnerR' || w.finale.roles.size === 1) && w.fuel.has(0.01)) {
+      p.firing = true;
+      w.fuel.drain(FUEL.flamethrowerPerSec * dt, 'flamethrower', w.time);
+    }
+    return;
+  }
   const held: Item | null = c.held(p);
   const target = findTarget(w, p);
   // revive a downed teammate: hold E on them
@@ -147,6 +169,7 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
       if (target.end) c.resumeWire(p, target.wire);
       else c.coilWire(p, target.wire);
     } else if (target?.kind === 'bodies') c.collectBodies(p);
+    else if (target?.kind === 'mark') w.run?.useMark(p, target.m);
   }
   if (inp.interact && p.pendingToggle != null) {
     p.liftT += dt;
@@ -204,6 +227,15 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
     if (inp.altPressed && PLACEABLE.includes(held.kind)) c.place(p);
     else if (inp.altPressed && target?.kind === 'device' && target.dev.kind === 'floodlight') c.aim(target.dev, p.yaw);
   } else if (inp.altPressed && target?.kind === 'device' && target.dev.kind === 'floodlight') c.aim(target.dev, p.yaw);
+
+  // ---- Enlite suit digging ----
+  if (inp.dig && p.suit && w.run) {
+    p.digT += dt;
+    if (p.digT >= 0.45) {
+      p.digT = 0;
+      w.run.playerDig(p);
+    }
+  } else p.digT = 0;
 
   // ---- stomp (crush a bug: harvests a body but puts you in reach) ----
   if (inp.stomp && w.time - p.stompT > CAMP.stompCooldown) {

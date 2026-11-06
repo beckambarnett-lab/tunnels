@@ -101,10 +101,10 @@ export function generateWorld(seed: number, gw = 4, gh = 3, pad = 4): WorldLayou
     const ox = pad + p.gx * SEG, oy = pad + p.gy * SEG;
     for (const op of p.def.ops) {
       if (op.op === 'pillar') pillars.push({ ox, oy, op, rot: p.rot });
-      else carve(grid, ox, oy, op, p.rot, true);
+      else carveOp(grid, ox, oy, op, p.rot, true);
     }
   }
-  for (const pl of pillars) carve(grid, pl.ox, pl.oy, pl.op, pl.rot, false);
+  for (const pl of pillars) carveOp(grid, pl.ox, pl.oy, pl.op, pl.rot, false);
   roughen(grid, seed);
 
   const sx = pad + startSlot.gx * SEG + SEG / 2, sy = pad + startSlot.gy * SEG + SEG / 2;
@@ -124,7 +124,7 @@ export function generateWorld(seed: number, gw = 4, gh = 3, pad = 4): WorldLayou
   };
 }
 
-function carve(grid: Grid, ox: number, oy: number, op: Op, rot: number, open: boolean) {
+export function carveOp(grid: Grid, ox: number, oy: number, op: Op, rot: number, open: boolean) {
   const v = open ? OPEN : SOLID;
   if (op.op === 'tube') {
     const a = rotatePoint(op.a, rot), b = rotatePoint(op.b, rot);
@@ -167,12 +167,16 @@ function distSeg(px: number, py: number, a: [number, number], b: [number, number
 
 /** Organic edges: random flips on the boundary, then one smoothing pass. */
 function roughen(grid: Grid, seed: number) {
+  roughenGrid(grid, seed);
+}
+/** Organic edges: random flips on the boundary, then one smoothing pass (skipping `keep` cells). */
+export function roughenGrid(grid: Grid, seed: number, keep?: Set<number>) {
   const { w, h } = grid;
   const src = grid.cells.slice();
   for (let y = 2; y < h - 2; y++)
     for (let x = 2; x < w - 2; x++) {
       const i = y * w + x;
-      if (src[i] === ROCK) continue;
+      if (src[i] === ROCK || keep?.has(i)) continue;
       let open = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (src[i + dy * w + dx] === OPEN) open++;
       if (open > 0 && open < 9) {
@@ -185,7 +189,7 @@ function roughen(grid: Grid, seed: number) {
   for (let y = 1; y < h - 1; y++)
     for (let x = 1; x < w - 1; x++) {
       const i = y * w + x;
-      if (s2[i] === ROCK) continue;
+      if (s2[i] === ROCK || keep?.has(i)) continue;
       let open = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && s2[i + dy * w + dx] === OPEN) open++;
       if (open >= 5) grid.cells[i] = OPEN;

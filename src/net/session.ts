@@ -13,6 +13,8 @@ import {
   swarmKeyframe,
   SyncStats,
   tendrilState,
+  runState,
+  applyRunState,
 } from './serialize';
 import { newItem } from '../sim/camp';
 
@@ -141,7 +143,7 @@ export class NetSession {
       case 'players':
         for (const s of m.list) {
           const self = s.id === this.localId;
-          applyPlayer(w, s, self && !(s.downed || s.hive || s.tethered || s.carriedT > 0));
+          applyPlayer(w, s, self && !(s.downed || s.hive || s.tethered || s.carriedT > 0 || s.riding));
         }
         break;
       case 'tendrils':
@@ -170,6 +172,8 @@ export class NetSession {
         (w as any).remoteQueen = m.queen;
         w.targetBugs = m.targetBugs;
         w.runState = m.runState;
+        w.failReason = m.failReason;
+        applyRunState(w, m.run);
         break;
       case 'ev':
         w.events.emit(m.name, m.data);
@@ -183,7 +187,7 @@ export class NetSession {
     for (const p of w.players) {
       if (p.id === this.localId) continue;
       const pose = this.poses.get(p.id);
-      if (pose && !p.downed && !p.hive && !p.tethered && p.carriedT <= 0) {
+      if (pose && !p.downed && !p.hive && !p.tethered && p.carriedT <= 0 && !p.riding) {
         p.x = pose.x;
         p.z = pose.z;
         p.yaw = pose.yaw;
@@ -243,6 +247,8 @@ export class NetSession {
         queen: w.queen ? { intent: w.queen.intent, silenceUntil: w.queen.silenceUntil, scores: w.queen.scores } : null,
         targetBugs: w.targetBugs,
         runState: w.runState,
+        failReason: w.failReason,
+        run: runState(w),
       });
     // swarm keyframes: a quarter of the slots per message, 16 messages a second = every bug 4x/s
     a.kf += dt;
@@ -278,5 +284,6 @@ export class NetSession {
     w.fuel.out = snap.fuelOut;
     Object.assign(w.light.belief, snap.belief);
     w.paused = snap.paused;
+    applyRunState(w, snap.run);
   }
 }

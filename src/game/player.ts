@@ -20,6 +20,12 @@ export class PlayerController {
       p.pitch = Math.max(-1.45, Math.min(1.45, p.pitch - input.mouse.dy * this.sens));
     }
     let mx = 0, mz = 0;
+    if (p.riding) {
+      // seated in the truck: look around, the driver steers with WASD
+      this.camera.position.set(p.x, 2.1, p.z);
+      this.camera.rotation.set(p.pitch, p.yaw + Math.PI, 0);
+      return;
+    }
     if (p.hive) {
       // in the hive you see from your bugs: low to the ground; WASD steers the group (see Game.hiveMove)
       this.camera.position.set(p.x - Math.sin(p.yaw) * 1.2, 0.55, p.z - Math.cos(p.yaw) * 1.2);

@@ -71,7 +71,7 @@ export function applyCamp(w: World, s: ReturnType<typeof campState>) {
 }
 
 // ---------- players ----------
-const PKEYS = ['x', 'z', 'yaw', 'pitch', 'alive', 'downed', 'downTimer', 'overwhelm', 'touching', 'firing', 'lastFired', 'crouch', 'slots', 'sel', 'carrying', 'layingWire', 'tethered', 'repairT', 'aim', 'eye', 'carriedT', 'reviveT', 'hive', 'will', 'ritual', 'hiveX', 'hiveZ', 'connected', 'ritualStage', 'order', 'reviveT', 'walkieTalking', 'loudAt', 'peerId'] as const;
+const PKEYS = ['x', 'z', 'yaw', 'pitch', 'alive', 'downed', 'downTimer', 'overwhelm', 'touching', 'firing', 'lastFired', 'crouch', 'slots', 'sel', 'carrying', 'layingWire', 'tethered', 'repairT', 'aim', 'eye', 'carriedT', 'reviveT', 'hive', 'will', 'ritual', 'hiveX', 'hiveZ', 'connected', 'ritualStage', 'order', 'reviveT', 'walkieTalking', 'loudAt', 'peerId', 'suit', 'riding'] as const;
 export function playerState(p: SimPlayer) {
   const o: any = { id: p.id, fl: [p.flashlight.on, p.flashlight.intensity] };
   for (const k of PKEYS) o[k] = (p as any)[k];
@@ -244,5 +244,30 @@ export function fullSnapshot(w: World, pristine: Uint8Array) {
     belief: w.light.belief,
     breach: w.breachAllowed,
     paused: w.paused,
+    night: !!w.run,
+    run: runState(w),
   };
+}
+
+export function runState(w: World) {
+  const r = w.run;
+  if (!r) return null;
+  return { act: r.act, powerOn: r.powerOn, plugOpen: r.plugOpen, used: [...r.used], eggs: r.eggs.map((e) => e.hp), rage: r.rage, finale: r.finale, jobKills: r.jobKills, radio: r.radio.slice(-3), checkpoints: r.checkpoints, truck: w.finale?.stateMsg ?? null };
+}
+export function applyRunState(w: World, s: ReturnType<typeof runState>) {
+  const r = w.run;
+  if (!r || !s) return;
+  r.act = s.act;
+  w.director.act = s.act;
+  if (r.powerOn !== s.powerOn) for (const l of r.houseLights) l.on = s.powerOn;
+  r.powerOn = s.powerOn;
+  r.plugOpen = s.plugOpen;
+  r.used = new Set(s.used);
+  s.eggs.forEach((hp, i) => r.eggs[i] && (r.eggs[i].hp = hp));
+  r.rage = s.rage;
+  r.finale = s.finale;
+  r.jobKills = s.jobKills;
+  r.checkpoints = s.checkpoints;
+  for (const m of s.radio) if (!r.radio.some((x) => x.text === m.text && x.t === m.t)) r.radio.push(m);
+  if (s.truck && w.finale) w.finale.applyState(s.truck);
 }

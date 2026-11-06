@@ -171,14 +171,14 @@ GDD contents: host P2P, bug and dig sync, proximity voice, hive death and respaw
 
 ## Milestone 5 — The full night
 
-GDD contents: house, base, nest, junkyard, truck finale, endings, art and audio. Gate (GDD): a full night plays from dusk to sunrise. Ordered by value; each is its own small task set, planned in detail when reached.
+GDD contents: house, base, nest, junkyard, truck finale, endings, art and audio. Gate (GDD): a full night plays from dusk to sunrise. Scope for this build: a **vertical slice** of the whole arc, every act present and connected, small but working, rather than full-size content.
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 5.1 | Act structure + checkpoints + failure/after-failure menu | Acts advance; fuel-out shows restart/continue |
-| 5.2 | The house (act 1): job, sprayers, zapper, flashlights, hole in the basement, power dies | Playable opening |
-| 5.3 | The base (act 2) cabled to the house | Base works |
-| 5.4 | Upper/deep nest with intersection (fuel tanks → flamethrower), oil rigs, junk mods | Act 3 playable |
-| 5.5 | Junkyard + Enlite suits (player digging) + queen's chamber provoke fight | Act 4 playable |
-| 5.6 | Digging-truck finale + endings (true / bad loop) | Sunrise reachable |
-| 5.7 | Art and audio pass | — |
+| 5.1 | Night layout: a linear chain of hand-built set pieces (house, base mouth, intersection, oil rigs, junkyard, queen's chamber) stitched with procedural tunnel segments; zones tagged per cell | Node test: every set piece reachable in order |
+| 5.2 | Run structure: acts advance on entering milestone spaces; director act follows; checkpoint autosave at each milestone space and oil rig; failure screen with Restart / Continue from checkpoint (continue marks the run) | Act and checkpoint events logged; failure menu works |
+| 5.3 | Act 1 house: lit rooms, the job (zap N bugs with the zapper; sprayers do nothing), flashlights in a cupboard, boss radio lines, power dies, basement floor opens | Playable opening into the nest |
+| 5.4 | Act 2–3: base cabled to the house (cable cut by the hive), intersection gives fuel tanks (sprayer → flamethrower), oil rigs refuel (+300, +450 ...), junk mods (hubcap, hose, Christmas lights) | Items/rigs work |
+| 5.5 | Act 4: junkyard with rusted Enlite logos, Enlite suits (faster, bigger flame, players dig), queen's chamber: burn egg sacs to fill her rage | Provoking the queen starts the finale |
+| 5.6 | Act 5: digging truck escape (driver steers up, x-ray of open space, gunners, queen-keeper stun / knock-aside), queen dies in sunlight; true ending vs bad ending (checkpoint used or failed finale → replay inside the swarm's mind) | Sunrise reachable; both endings show |
+| 5.7 | Art/audio pass: Xterminator's jingle and boss radio (generated), dusk light, sunrise, logo decals | — |
