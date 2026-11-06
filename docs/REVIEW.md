@@ -6,6 +6,17 @@ Everything is in `/home/user/tunnels` (local git repo, tags `milestone-N`). **Th
 cd /home/user/tunnels && git remote add origin <your-repo-url> && git push -u origin main --tags
 ```
 
+## At a glance
+| Milestone | State | Tag |
+| --- | --- | --- |
+| 1 Swarm prototype | gate passed | `milestone-1` |
+| 2 The moving camp | gate passed | `milestone-2` |
+| 3 The queen and director | gate passed (the real gate, "testers can read her plan", needs people) | `milestone-3` |
+| 4 Multiplayer and the hive | gate passed (two tabs, 10 min, hive death + respawn) | `milestone-4` |
+| 5 The full night | vertical slice: every act and beat once, dusk to sunrise, both endings | `milestone-5-slice` |
+
+95 Node tests (`npm test`), 5 browser checks (`scripts/gate1-4.mjs`, `scripts/night.mjs`). Biggest unknowns: real-GPU fps, online (WebRTC) play and voice. None could be measured in this container.
+
 ## How to run
 ```bash
 npm install
