@@ -17,7 +17,9 @@ export class Grid {
   burrow: Uint8Array; // under-layer burrows
   explored: Uint8Array; // seen by any player (for the map)
   version = 0;
-  changed: number[] = []; // cell indices changed since last drain
+  changed: number[] = []; // cell indices changed since last drain (render)
+  netChanged: number[] = []; // same, drained by the host's network session
+  trackNet = false;
 
   constructor(w: number, h: number) {
     this.w = w;
@@ -85,6 +87,7 @@ export class Grid {
     this.dugAt[i] = time;
     this.version++;
     this.changed.push(i);
+    if (this.trackNet) this.netChanged.push(i);
     return true;
   }
 
@@ -96,7 +99,18 @@ export class Grid {
     this.dugAt[i] = -1;
     this.version++;
     this.changed.push(i);
+    if (this.trackNet) this.netChanged.push(i);
     return true;
+  }
+
+  /** Apply a cell change received from the host. */
+  applyRemote(i: number, v: number, dugAt: number) {
+    if (this.cells[i] === v) return;
+    this.cells[i] = v;
+    this.dugAt[i] = dugAt;
+    this.digProgress[i] = 0;
+    this.version++;
+    this.changed.push(i);
   }
 
   drainChanges(): number[] {

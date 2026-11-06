@@ -60,7 +60,7 @@ export class Fire {
           this.z[i] = nz;
           this.y[i] = Math.max(0.05, ny);
           // fire poured into a fresh hole collapses it (GDD: closing a breach)
-          if (g.dugAt[cell] >= 0 && w.time - g.dugAt[cell] < FIRE.collapseWindow) {
+          if (w.authority && g.dugAt[cell] >= 0 && w.time - g.dugAt[cell] < FIRE.collapseWindow) {
             const h = (this.heat.get(cell) || 0) + dt;
             this.heat.set(cell, h);
             if (h >= FIRE.collapseHeat) this.collapse(cell, w);

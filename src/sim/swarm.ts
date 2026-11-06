@@ -97,6 +97,26 @@ export class Swarm {
     return i;
   }
 
+  /** Clients mirror the host's bug slots exactly. */
+  ensureCount(n: number) {
+    if (n > this.count) this.count = Math.min(this.max, n);
+  }
+  setAlive(i: number, x: number, z: number, layer: number) {
+    if (this.alive[i]) return;
+    this.alive[i] = 1;
+    this.active++;
+    const f = this.free.indexOf(i);
+    if (f >= 0) this.free.splice(f, 1);
+    this.x[i] = x;
+    this.z[i] = z;
+    this.y[i] = 0;
+    this.vx[i] = this.vz[i] = 0;
+    this.layer[i] = layer;
+    this.state[i] = FLOW;
+    this.timer[i] = 0;
+    if (!this.phase[i]) this.phase[i] = this.rng.next() * 100;
+  }
+
   kill(i: number, cause: string, events?: Events) {
     if (!this.alive[i]) return;
     this.alive[i] = 0;

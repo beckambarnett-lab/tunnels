@@ -44,7 +44,23 @@ export interface SimPlayer {
   zapT: number;
   stompT: number;
   spraying: boolean;
+  aim: [number, number, number];
+  eye: [number, number, number];
+  // death and the hive (M4)
+  carriedT: number; // seconds being carried toward the queen
+  reviveT: number; // seconds a teammate has been reviving them
+  hive: boolean; // devoured: playing as the hive
+  will: number; // hive player's will (resisting orders drains it)
+  ritual: number; // respawn ritual progress 0..1 (electrocution)
+  hiveX: number; // hive player's group centre
+  hiveZ: number;
+  connected: boolean;
+  hiveMove: [number, number]; // hive player's desired direction (world x/z)
 }
+
+export type RunState = 'playing' | 'failed' | 'won';
+
+export type Role = 'solo' | 'host' | 'client';
 
 export interface WorldOptions {
   seed?: number;
@@ -53,11 +69,17 @@ export interface WorldOptions {
   layout?: WorldLayout;
   /** disable the queen (tests drive tendrils by hand) */
   noQueen?: boolean;
+  /** solo / host run everything; a client only runs bug bodies, light and fields locally */
+  role?: Role;
 }
 
 /** Owns every simulation system and steps them in order. No rendering in here. */
 export class World {
   seed: number;
+  role: Role;
+  paused = false;
+  runState: RunState = 'playing';
+  failReason = '';
   layout: WorldLayout;
   grid: Grid;
   light: LightMap;
@@ -88,6 +110,7 @@ export class World {
 
   constructor(opts: WorldOptions = {}) {
     this.seed = opts.seed ?? 1;
+    this.role = opts.role ?? 'solo';
     this.rng = new Rng(this.seed * 31 + 7);
     this.layout = opts.layout ?? generateWorld(this.seed);
     this.grid = this.layout.grid;
@@ -100,7 +123,7 @@ export class World {
     this.camp = new Camp(this);
     this.learning = new Learning(this);
     this.director = new Director(this);
-    this.queen = opts.noQueen ? null : new Queen(this);
+    this.queen = opts.noQueen || this.role === 'client' ? null : new Queen(this);
     this.targetBugs = opts.bugs ?? SWARM.defaultBugs;
     this.events.on('breach', (e) =>
       this.breachLog.push({ t: this.time, kind: e.kind, cell: e.cell, seen: this.vis.isSeen(e.cell), raw: this.light.surfaceRaw(e.cell) }),
@@ -138,6 +161,17 @@ export class World {
       zapT: -10,
       stompT: -10,
       spraying: false,
+      aim: [0, 0, 1],
+      eye: [x, 1.6, z],
+      carriedT: 0,
+      reviveT: 0,
+      hive: false,
+      will: 1,
+      ritual: 0,
+      hiveX: x,
+      hiveZ: z,
+      connected: true,
+      hiveMove: [0, 0],
     };
     this.players.push(p);
     return p;
@@ -180,7 +214,7 @@ export class World {
 
   /** Keep the live bug count at the slider value: spawn in the hive, despawn the furthest. */
   balancePopulation() {
-    if (this.targetBugs < 0) return; // unmanaged (tests place bugs by hand)
+    if (this.targetBugs < 0 || this.role === 'client') return; // unmanaged (tests place bugs by hand; clients mirror the host)
     const sw = this.swarm;
     const cells = this.layout.hiveCells;
     let spawned = 0;
@@ -198,7 +232,12 @@ export class World {
     }
   }
 
+  get authority() {
+    return this.role !== 'client';
+  }
+
   step(dt: number) {
+    if (this.paused) return;
     dt = Math.min(dt, 1 / 20);
     const T = (a: number) => (typeof performance !== 'undefined' ? performance.now() : Date.now()) - a;
     const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -235,15 +274,23 @@ export class World {
       players: this.players.map((p) => ({ x: p.x, z: p.z, alive: p.alive && !p.downed })),
       time: this.time,
       events: this.events,
-      breachAllowed: this.breachAllowed && this.debugBreaches,
+      breachAllowed: this.breachAllowed && this.debugBreaches && this.authority,
       onTouch: (i, k) => this.learning.touch(i, k),
     });
     this.timings.swarm = T(t);
     t = now();
+    // flames are emitted on every machine from each player's synced aim
+    for (const p of this.players) {
+      if (!p.firing || !p.alive || p.downed || p.hive) continue;
+      const [ax, ay, az] = p.aim, [ex, ey, ez] = p.eye;
+      this.fire.emit(ex + ax * 0.5, ey - 0.35, ez + az * 0.5, ax, ay, az, dt);
+    }
     this.fire.step(dt, this);
     this.timings.fire = T(t);
-    this.camp.step(dt);
-    this.stepPlayers(dt);
+    if (this.authority) {
+      this.camp.step(dt);
+      this.stepPlayers(dt);
+    }
     this.timings.total = T(t0);
   }
 

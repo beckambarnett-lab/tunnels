@@ -109,6 +109,8 @@ export function promptFor(w: World, p: SimPlayer, t: Target | null): string {
 export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number) {
   const c = w.camp;
   p.firing = false;
+  p.aim = inp.aim;
+  p.eye = inp.eye;
   if (!p.alive || p.downed) {
     p.liftT = 0;
     return;
@@ -170,11 +172,8 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
         break;
       case 'flamethrower':
         if (inp.use && w.fuel.has(0.01)) {
-          p.firing = true;
+          p.firing = true; // the world emits the flames (on every machine) from p.aim / p.eye
           w.fuel.drain(FUEL.flamethrowerPerSec * dt, 'flamethrower', w.time);
-          const [ax, ay, az] = inp.aim;
-          const [ex, ey, ez] = inp.eye;
-          w.fire.emit(ex + ax * 0.5, ey - 0.35, ez + az * 0.5, ax, ay, az, dt);
         }
         break;
       case 'sprayer':

@@ -16,7 +16,8 @@ export type ItemKind =
   | 'splitter'
   | 'flare'
   | 'walkie'
-  | 'lightning';
+  | 'lightning'
+  | 'bugzapper';
 
 export const ITEM_NAMES: Record<ItemKind, string> = {
   flashlight: 'Flashlight',
@@ -32,9 +33,10 @@ export const ITEM_NAMES: Record<ItemKind, string> = {
   flare: 'Flare',
   walkie: 'Walkie-talkie',
   lightning: 'Lightning gun',
+  bugzapper: 'Bug zapper',
 };
 
-export const PLACEABLE: ItemKind[] = ['generator', 'lamp', 'floodlight', 'motion', 'splitter'];
+export const PLACEABLE: ItemKind[] = ['generator', 'lamp', 'floodlight', 'motion', 'splitter', 'bugzapper'];
 
 export interface Item {
   id: number;
@@ -47,7 +49,7 @@ export interface FloorItem {
   x: number;
   z: number;
 }
-export type DeviceKind = 'generator' | 'lamp' | 'floodlight' | 'motion' | 'splitter';
+export type DeviceKind = 'generator' | 'lamp' | 'floodlight' | 'motion' | 'splitter' | 'bugzapper';
 export interface Device {
   id: number;
   kind: DeviceKind;
@@ -88,6 +90,7 @@ const PORTS: Record<DeviceKind, { in: number; out: number }> = {
   floodlight: { in: 1, out: 1 },
   motion: { in: 1, out: 1 },
   splitter: { in: 1, out: 2 },
+  bugzapper: { in: 1, out: 0 },
 };
 
 let nextId = 1;
@@ -113,7 +116,7 @@ export class Camp {
 
   constructor(public w: World) {
     w.events.on('bugDeath', (e) => {
-      if (e.layer) return;
+      if (e.layer || !w.authority) return; // bodies are the host's to hand out
       if (e.cause === 'zap' || e.cause === 'stomp' || e.cause === 'lightning' || e.cause === 'crush') this.bodies.push({ x: e.x, z: e.z });
     });
   }
@@ -177,18 +180,25 @@ export class Camp {
     if (!this.w.grid.isOpenAt(x, z)) return null;
     if (p.carrying) p.carrying = null;
     else p.slots[p.sel] = null;
-    const dev: Device = { id: nextId++, kind: it.kind as DeviceKind, item: it, x, z, yaw: p.yaw, running: false, powered: false, motionActive: 0, light: null, hp: 1, broken: false };
-    if (dev.kind === 'lamp') dev.light = makeLight('lamp', { x, z, y: 1.1, radius: 5, intensity: 1, on: false, owner: 'dev' + dev.id });
-    if (dev.kind === 'floodlight')
-      dev.light = makeLight('floodlight', { x, z, y: 1.7, radius: 13, cone: (32 * Math.PI) / 180, intensity: 1.4, dirX: Math.sin(p.yaw), dirZ: Math.cos(p.yaw), on: false, owner: 'dev' + dev.id });
-    if (dev.kind === 'motion') dev.light = makeLight('motion', { x, z, y: 1.0, radius: 4.5, intensity: 1, on: false, owner: 'dev' + dev.id });
-    if (dev.kind === 'generator') {
-      dev.running = true; // set down = started; E toggles
-      dev.light = makeLight('lamp', { x, z, y: 0.6, radius: 2.2, intensity: 0.45, on: false, owner: 'dev' + dev.id });
-    }
+    const dev = this.createDevice(it.kind as DeviceKind, it, x, z, p.yaw);
     this.devices.push(dev);
     this.version++;
     this.w.events.emit('devicePlaced', { id: dev.id, kind: dev.kind, x, z });
+    return dev;
+  }
+
+  /** Build a device record (also used by clients to mirror the host's camp, keeping its id). */
+  createDevice(kind: DeviceKind, it: Item, x: number, z: number, yaw: number, id = nextId++): Device {
+    const dev: Device = { id, kind, item: it, x, z, yaw, running: false, powered: false, motionActive: 0, light: null, hp: 1, broken: false };
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    if (kind === 'lamp') dev.light = makeLight('lamp', { x, z, y: 1.1, radius: 5, intensity: 1, on: false, owner: 'dev' + id });
+    if (kind === 'floodlight') dev.light = makeLight('floodlight', { x, z, y: 1.7, radius: 13, cone: (32 * Math.PI) / 180, intensity: 1.4, dirX: fx, dirZ: fz, on: false, owner: 'dev' + id });
+    if (kind === 'motion') dev.light = makeLight('motion', { x, z, y: 1.0, radius: 4.5, intensity: 1, on: false, owner: 'dev' + id });
+    if (kind === 'bugzapper') dev.light = makeLight('lamp', { x, z, y: 0.9, radius: 2, intensity: 0.5, on: false, owner: 'dev' + id });
+    if (kind === 'generator') {
+      dev.running = true; // set down = started; E toggles
+      dev.light = makeLight('lamp', { x, z, y: 0.6, radius: 2.2, intensity: 0.45, on: false, owner: 'dev' + id });
+    }
     return dev;
   }
 
