@@ -102,3 +102,27 @@ export const FUEL = {
   respawn: 150,
   oilPerBody: 2,
 };
+
+// Camp (M2)
+export const CAMP = {
+  spoolLength: 15, // m of cable per spool (GDD: about 15 m)
+  wirePointStep: 0.5, // m between laid cable points
+  reelPerCrank: 0.5, // m wound in per left/right alternation
+  cutTime: 1.0, // bug-seconds of chewing to cut a wire segment
+  chewRadius: 0.45,
+  repairTime: 1.2, // s holding R
+  repairRadius: 1.6,
+  interactRange: 2.2,
+  carrySpeedMul: 0.6, // two-handed generator
+  liftHold: 0.5, // s holding E to lift the generator
+  zapperRange: 2.4,
+  zapperCone: 0.5, // rad half-angle
+  zapperMaxKills: 3,
+  zapperCooldown: 0.45,
+  zapperFuelPerKill: 3,
+  stompRange: 0.9,
+  stompCooldown: 0.7,
+  flashlightBattery: 240, // s of light per charge
+  bodyRadius: 1.6, // E collects all bodies within this
+  motionRange: 5,
+};

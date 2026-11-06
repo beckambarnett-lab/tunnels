@@ -10,6 +10,8 @@ import { Fire } from './fire';
 import { Tendril } from './tendril';
 import { Queen } from './queen';
 import { generateWorld, WorldLayout } from './worldgen';
+import { Fuel } from './fuel';
+import { Camp, Item } from './camp';
 
 export interface SimPlayer {
   id: string;
@@ -27,6 +29,19 @@ export interface SimPlayer {
   crouch: boolean;
   flashlight: LightSource;
   fireLight: LightSource;
+  // inventory (GDD: 3 slots; the generator is two-handed)
+  slots: (Item | null)[];
+  sel: number;
+  carrying: Item | null;
+  layingWire: number | null;
+  lastCrank: 'L' | 'R' | null;
+  tethered: boolean;
+  repairT: number;
+  liftT: number;
+  pendingToggle: number | null;
+  zapT: number;
+  stompT: number;
+  spraying: boolean;
 }
 
 export interface WorldOptions {
@@ -50,6 +65,8 @@ export class World {
   fire: Fire;
   queen: Queen | null;
   events = new Events();
+  fuel: Fuel;
+  camp: Camp;
   tendrils = new Map<number, Tendril>();
   players: SimPlayer[] = [];
   staticLights: LightSource[] = [];
@@ -74,6 +91,8 @@ export class World {
     this.fields = new FieldManager(this.grid, this.light, opts.useWorker ?? false);
     this.swarm = new Swarm(this.grid, SWARM.maxBugs, this.seed);
     this.fire = new Fire();
+    this.fuel = new Fuel(this.events);
+    this.camp = new Camp(this);
     this.queen = opts.noQueen ? null : new Queen(this);
     this.targetBugs = opts.bugs ?? SWARM.defaultBugs;
     this.events.on('breach', (e) =>
@@ -100,6 +119,18 @@ export class World {
       crouch: false,
       flashlight: makeLight('flashlight', { radius: 15, cone: (24 * Math.PI) / 180, intensity: 1.25, y: 1.4, owner: id }),
       fireLight: makeLight('fire', { radius: FIRE.lightRadius, cone: (55 * Math.PI) / 180, intensity: 1.6, on: false, y: 1.2, owner: id }),
+      slots: [null, null, null],
+      sel: 0,
+      carrying: null,
+      layingWire: null,
+      lastCrank: null,
+      tethered: false,
+      repairT: 0,
+      liftT: 0,
+      pendingToggle: null,
+      zapT: -10,
+      stompT: -10,
+      spraying: false,
     };
     this.players.push(p);
     return p;
@@ -123,6 +154,7 @@ export class World {
       out.push(p.flashlight, p.fireLight);
     }
     for (const l of this.staticLights) out.push(l);
+    this.camp.lights(out);
     // burning bugs are fire too (they light up and repel their neighbours)
     const sw = this.swarm;
     let k = 0;
@@ -198,6 +230,7 @@ export class World {
     t = now();
     this.fire.step(dt, this);
     this.timings.fire = T(t);
+    this.camp.step(dt);
     this.stepPlayers(dt);
     this.timings.total = T(t0);
   }

@@ -76,13 +76,16 @@ export class Queen {
       const target = players.length ? players[k % players.length] : null;
       t.targetId = target?.id;
       const undermine = k % 3 === 2;
-      const mode: TendrilMode = this.phase === 'retreat' || !target ? 'retreat' : this.phase === 'strike' ? 'strike' : 'mass';
+      const sabotage = k === list.length - 1 && list.length > 1 && !!w.camp.darkestWirePoint();
+      let mode: TendrilMode = this.phase === 'retreat' || !target ? 'retreat' : this.phase === 'strike' ? 'strike' : 'mass';
+      if (sabotage && this.phase !== 'retreat') mode = 'strike';
       if (t.mode !== mode) {
         t.mode = mode;
         t.modeSince = w.time;
       }
-      t.intent = undermine ? 'undermine' : 'probe';
-      t.params = defaultParams({ allowUnder: undermine });
+      t.intent = sabotage ? 'sabotage' : undermine ? 'undermine' : 'probe';
+      t.holdDist = sabotage ? 0 : 3.5;
+      t.params = defaultParams({ allowUnder: undermine && !sabotage });
       this.refreshGoal(t);
     });
     // assign bugs to tendrils (stable by index)
@@ -104,9 +107,18 @@ export class Queen {
       t.fieldName = 'hive';
       t.gx = w.layout.hive.x;
       t.gz = w.layout.hive.z;
-      if (!t.goals.length || t.fieldName !== 'hive') t.goals = w.goalCellsAt(t.gx, t.gz, 2);
       t.goals = w.goalCellsAt(t.gx, t.gz, 2);
       return;
+    }
+    if (t.intent === 'sabotage') {
+      const wp = w.camp.darkestWirePoint();
+      if (wp) {
+        t.fieldName = 'wire';
+        t.gx = wp.x;
+        t.gz = wp.z;
+        t.goals = w.goalCellsAt(wp.x, wp.z, 0);
+        return;
+      }
     }
     const p = w.players.find((pp) => pp.id === t.targetId);
     if (!p) return;
