@@ -21,6 +21,7 @@ import type { Role } from '../sim/world';
 import { NetSession } from '../net/session';
 import { PlayerAvatars } from '../render/avatars';
 import { Voice } from '../net/voice';
+import { saveToBrowser, exportFile, readBrowserSave, applySave } from '../net/save';
 import { Panel } from '../debug/panel';
 
 export interface GameOptions {
@@ -35,6 +36,7 @@ export interface GameOptions {
   snapshot?: any;
   localId?: string;
   room?: string;
+  load?: boolean;
 }
 
 export class Game {
@@ -60,6 +62,9 @@ export class Game {
   session: NetSession | null = null;
   localId = 'local';
   voice: Voice | null = null;
+  pristine: Uint8Array;
+  toast = '';
+  toastT = 0;
   private called = new Set<string>();
   map = new WarMap();
   last = 0;
@@ -116,7 +121,16 @@ export class Game {
         this.giveStartingKit();
       }
       if (role === 'host') this.session!.attach(this.world, pristine);
+      // ?load: continue from the browser save (marks the run: bad ending only)
+      if (opts.load) {
+        const sv = readBrowserSave();
+        if (sv) {
+          applySave(this.world, sv);
+          this.me = this.world.players.find((p) => p.id === this.localId) ?? this.me;
+        }
+      }
     }
+    this.pristine = pristine;
 
     this.terrain = new TerrainMesh(this.world.grid, opts.seed);
     this.scene.add(this.terrain.group);
@@ -316,6 +330,12 @@ export class Game {
     if (i.hit('KeyT')) this.panel.flip('topDown');
     if (i.hit('KeyG')) this.panel.flip('god');
     if (i.hit('Backquote')) this.panel.el.classList.toggle('hidden');
+    // save (host / solo only): K to the browser, Shift+K to a file
+    if (i.hit('KeyK') && (!this.session || this.session.isHost)) {
+      if (i.down('ShiftLeft')) exportFile(this.world, this.pristine);
+      else this.toast = saveToBrowser(this.world, this.pristine) ? 'Saved (open with ?load to continue)' : 'Save failed';
+      this.toastT = 3;
+    }
     if (i.hit('KeyF')) {
       const it = this.me.slots[this.me.sel];
       if (it?.kind === 'flashlight') it.on = !it.on;
@@ -387,7 +407,8 @@ export class Game {
     this.renderer.render(this.scene, top ? this.topCam : this.camera);
     this.renderMs = performance.now() - r0;
     this.hud.update(me, this.time, { locked: locked || this.opts.bench });
-    this.hud.updateCamp(this.world, me, promptFor(this.world, me, findTarget(this.world, me)));
+    this.toastT -= dt;
+    this.hud.updateCamp(this.world, me, (this.toastT > 0 ? this.toast + '\n' : '') + promptFor(this.world, me, findTarget(this.world, me)));
     this.map.draw(this.world, me.id, this.time);
     this.hud.setPause(this.world.paused, !!this.session && !this.session.isHost);
     this.updateOverlay(dt, simMs);

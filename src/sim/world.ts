@@ -85,6 +85,7 @@ export class World {
   role: Role;
   paused = false;
   runState: RunState = 'playing';
+  usedSave = false; // continued from a save/checkpoint: only the bad ending is reachable
   failReason = '';
   layout: WorldLayout;
   grid: Grid;

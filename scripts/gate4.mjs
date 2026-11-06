@@ -90,13 +90,14 @@ const death = await host.evaluate(async (cid) => {
   me.x = gen.x - Math.sin(me.yaw) * 1.5; me.z = gen.z - Math.cos(me.yaw) * 1.5;
   const target = { x: lamp.x + 0.3, z: lamp.z + 0.3 };
   // the joined player is overwhelmed far from help, in the dark
-  let spot = null;
-  for (let tries = 0; tries < 5000 && !spot; tries++) {
-    const i = Math.floor(Math.random() * w.grid.n);
-    if (w.grid.cells[i] !== 0) continue;
+  let spot = null, best = -1;
+  for (let i = 0; i < w.grid.n; i += 3) {
+    if (w.grid.cells[i] !== 0 || w.light.rawAt(w.grid.centerX(i), w.grid.centerZ(i)) > 0.02) continue;
     const x = w.grid.centerX(i), z = w.grid.centerZ(i);
     const d = Math.hypot(x - gen.x, z - gen.z), dh = Math.hypot(x - w.layout.hive.x, z - w.layout.hive.z);
-    if (d > 14 && d < 30 && dh > 10 && w.light.rawAt(x, z) < 0.01) spot = { x, z };
+    // dark, well away from the camp, and not already at the queen
+    const score = Math.min(d, 25) + Math.min(dh, 15);
+    if (d > 8 && dh > 8 && score > best) (best = score), (spot = { x, z });
   }
   p.x = spot.x; p.z = spot.z;
   p.downed = true; p.overwhelm = 1;

@@ -6,7 +6,7 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - Milestone 1 (swarm prototype): **done, gate passed, tagged `milestone-1`**
 - Milestone 2 (the moving camp): **done, gate passed, tagged `milestone-2`**
 - Milestone 3 (queen and director): **done, gate passed, tagged `milestone-3`**
-- Current: Milestone 4 (multiplayer and the hive), task 4.1
+- Current: Milestone 4 (multiplayer and the hive): all tasks built; gate run in progress (task 4.10)
 
 ## Done
 ### Milestone 1
@@ -49,8 +49,19 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - Devices can be damaged and broken (siege, generator sabotage); hold R to repair.
 - Debug panel: "force intent" selector.
 
+### Milestone 4 (built; gate pending)
+- 4.1 Transports: BroadcastChannel (same-machine tabs), PeerJS/WebRTC (online, untested here), in-memory (tests). Title lobby + `?host=CODE` / `?join=CODE&net=local|webrtc`.
+- 4.2 Snapshot on join (terrain diff incl. every dug cell, camp, players, tendrils, swarm, fuel, belief); players at 20 Hz; tendrils 4 Hz; camp on change; terrain changes as they happen; misc 5 Hz; relayed tell/breach/fx events.
+- 4.3 Swarm sync: clients steer bugs locally from synced tendrils and fields; host keyframes cover every bug 4×/s, quantised, soft-corrected (snap if >1.5 m).
+- 4.4 PeerJS backend (same interface).
+- 4.5 Proximity voice + walkie (V) + crushed/hive voice + voice as noise (PeerJS only, untested).
+- 4.6 Downed → carrier group walks you to the queen (~45 s) → teammates scatter carriers and hold E to revive.
+- 4.7 Devoured → hive player: steer ~60 bugs, queen's orders, will meter, swarm vision with light glare.
+- 4.8 Respawn ritual: body of 60 → into the light → electrocuted ~10 s (live cable / lightning hits / solo bug zapper) → back at low health, −150 fuel; the queen sends a tendril to break it up. Everyone in the hive = run fails (solo: unless a powered bug zapper exists, 3 min limit).
+- 4.9 Pause: Esc/P, host pauses everyone. (Save/load snapshot not done yet.)
+
 ## In progress
-- (none)
+- 4.10 gate: `scripts/gate4.mjs` (run against a frozen build: `npx vite build --outDir dist-gate && npx vite preview --outDir dist-gate --port 4174`, then `BASE=http://localhost:4174/ node scripts/gate4.mjs`).
 
 ## Next
 - M4: transport (BroadcastChannel + PeerJS), lobby, host/join, world snapshot, player sync, swarm sync (local sim + host keyframes), dig/camp/fuel events, carrying + revive, hive player + respawn ritual, pause.

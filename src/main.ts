@@ -12,6 +12,7 @@ const base = {
   auto: q.has('auto'),
   act: q.has('act') ? +q.get('act')! : undefined,
   res: q.has('res') ? +q.get('res')! : undefined,
+  load: q.has('load'),
 };
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 
