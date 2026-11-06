@@ -1,5 +1,5 @@
 import { CELL } from '../config';
-import { Grid, OPEN } from './grid';
+import { Grid, OPEN, SOLID as SOLID_ } from './grid';
 
 export type LightKind = 'fire' | 'burn' | 'flare' | 'flashlight' | 'lamp' | 'floodlight' | 'motion' | 'xmas';
 export const ELECTRIC: LightKind[] = ['flashlight', 'lamp', 'floodlight', 'motion'];
@@ -61,14 +61,71 @@ export class LightMap {
     this.elecMax = new Float32Array(grid.n);
   }
 
+  private last: LightSource[] = [];
+  /**
+   * Raw light at a point from every source except `exclude` (same falloff, cone and line of sight
+   * as the map). Used to ask "is this player inside anyone else's light?".
+   */
+  lightAt(x: number, z: number, exclude?: LightSource | null, occluder?: { x: number; z: number; r: number } | null): number {
+    const g = this.grid;
+    const tx = Math.floor(x / CELL), tz = Math.floor(z / CELL);
+    let sum = 0;
+    for (const s of this.last) {
+      if (s === exclude || !s.on || s.intensity <= 0) continue;
+      const dx = x - s.x, dz = z - s.z;
+      const d = Math.hypot(dx, dz);
+      if (d > s.radius) continue;
+      let a = 1;
+      const omni = s.cone >= Math.PI - 1e-3;
+      if (!omni && d > 0.35) {
+        const c = (dx * s.dirX + dz * s.dirZ) / d;
+        const cosCone = Math.cos(s.cone), cosSoft = Math.cos(Math.min(Math.PI, s.cone * 1.35));
+        if (c < cosSoft) continue;
+        a = c >= cosCone ? 1 : (c - cosSoft) / (cosCone - cosSoft);
+      }
+      const sx = Math.floor(s.x / CELL), sz = Math.floor(s.z / CELL);
+      if (d / CELL > 1.2 && !los(g, sx, sz, tx, tz)) continue;
+      if (occluder) {
+        // a body between the source and the point casts a shadow on it
+        const vx = x - s.x, vz = z - s.z, l2 = vx * vx + vz * vz || 1;
+        const t = ((occluder.x - s.x) * vx + (occluder.z - s.z) * vz) / l2;
+        if (t > 0 && t < 0.97) {
+          const ox = s.x + vx * t - occluder.x, oz = s.z + vz * t - occluder.z;
+          if (ox * ox + oz * oz < occluder.r * occluder.r) continue;
+        }
+      }
+      sum += s.intensity * a * Math.pow(1 - d / s.radius, 1.15);
+    }
+    return sum;
+  }
+
   rebuild(sources: LightSource[]) {
+    this.last = sources.slice();
     this.raw.fill(0);
     this.eff.fill(0);
     this.fire.fill(0);
     this.kindAt.fill(0);
     this.elecMax.fill(0);
+    this.touched.length = 0;
     for (const s of sources) if (s.on && s.intensity > 0) this.add(s);
+    this.lightFaces();
     this.version++;
+  }
+
+  private touched: number[] = [];
+  /**
+   * Wall faces carry the light that falls on them (in `eff`, which bugs route by): digging out
+   * through a lit face is expensive, so tendrils plan their breaches at dark spots (GDD).
+   */
+  private lightFaces() {
+    // the same measure as surfaceRaw (brightest of the 8 neighbours, raw light), so the field and the
+    // breach rule always agree about which faces can be broken out of
+    const g = this.grid, e = this.eff, r = this.raw, c = g.cells, w = g.w;
+    for (const i of this.touched) {
+      const v = r[i];
+      if (c[i] !== OPEN) continue;
+      for (const j of [i + 1, i - 1, i + w, i - w, i + w + 1, i + w - 1, i - w + 1, i - w - 1]) if (j >= 0 && j < g.n && c[j] === SOLID_ && e[j] < v) e[j] = v;
+    }
   }
 
   private add(s: LightSource) {
@@ -101,6 +158,7 @@ export class LightMap {
         }
         if (d > 1.2 && !los(g, scx, scz, cx, cz)) continue;
         const f = s.intensity * a * Math.pow(1 - d / r, 1.15);
+        if (this.raw[i] === 0) this.touched.push(i);
         this.raw[i] += f;
         this.eff[i] += f * mult;
         if (elec) {

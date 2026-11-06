@@ -331,6 +331,8 @@ export class Game {
     ev.on('sunrise', () => this.synth.sunrise());
     ev.on('eggBurned', (e) => this.synth.squeal(e.x, e.z));
     ev.on('generatorOff', (e) => this.synth.thump(e.x, 0.5, e.z, 40, 0.5));
+    ev.on('sputter', (e) => this.synth.cough(e.x, e.z));
+    ev.on('strike', (e) => this.synth.surge(e.fromX ?? e.x, e.fromZ ?? e.z, e.bugs ?? 50));
     const tell = (e: any) => {
       this.synth.tell(e.intent, e.x, e.z, this.me.x, this.me.z);
       this.lastTell = `${e.intent}: ${e.tell ?? ''}`;

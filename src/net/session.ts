@@ -19,7 +19,7 @@ import {
 import { newItem } from '../sim/camp';
 
 /** World events the host relays so clients hear and see the same tells, breaches and sparks. */
-const RELAY = ['breach', 'tell', 'tellPulse', 'wireCut', 'zap', 'lightning', 'harvest', 'deviceBroken', 'collapse', 'stomp', 'dig', 'unlock', 'intent', 'directorState', 'downed', 'devoured', 'revived', 'respawned', 'bodyDragged', 'fuelOut', 'runFailed'];
+const RELAY = ['breach', 'tell', 'tellPulse', 'wireCut', 'zap', 'lightning', 'harvest', 'deviceBroken', 'collapse', 'stomp', 'dig', 'unlock', 'intent', 'directorState', 'downed', 'devoured', 'revived', 'respawned', 'bodyDragged', 'fuelOut', 'runFailed', 'strike', 'sputter'];
 
 export interface Pose {
   x: number;

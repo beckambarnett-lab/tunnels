@@ -23,6 +23,8 @@ export interface SwarmContext {
   breachAllowed: boolean;
   /** a bug touched electric light without burning (belief drops) */
   onTouch?: (i: number, kindIndex: number) => void;
+  /** wall faces in a player's body shadow (dark for the breach rule) */
+  shadowFaces?: Set<number>;
 }
 
 /**
@@ -152,6 +154,7 @@ export class Swarm {
   canBreach(ctx: SwarmContext, cell: number) {
     if (!ctx.breachAllowed) return false;
     if (ctx.vis.isSeen(cell)) return false;
+    if (ctx.shadowFaces?.has(cell)) return true;
     return ctx.light.surfaceRaw(cell) < LIGHT.darkThreshold;
   }
 

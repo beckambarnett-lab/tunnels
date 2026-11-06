@@ -164,6 +164,11 @@ Title screen → *Play solo*. Or `?night&seed=2`. Zap 8 bugs in the house, grab 
 ## Audit fixes
 Re-reading the GDD turned up four rule bugs, now fixed: fuel running out didn't end the run; standing against an unlit wall wasn't an opening; every run used the same map (seed 1); there was no checkpoint at the truck. See PROGRESS.md.
 
+## Attack openings
+The hive now attacks only through openings it has sensed: a light dies or flickers, a wire is cut, the flamethrower stops after a long burst, someone is alone, out of the light, or has their back to an unlit wall. Until then it masses at the edge of the light and waits (300 bugs within 9 m, none touching). When a lamp dies the nearest tendrils pour in within a fraction of a second and the first bug touches you 0.7 s later; relight it and they're back at the edge 2 s after. Flank tendrils dig into the earth behind you and come out through the dark wall at your back. A damaged or low-fuel generator coughs, and every cough is an opening. You hear a strike as a rising chitter from the direction it's coming. Design readings in QUESTIONS.md Q19–Q22.
+
+**Playtest this:** set up camp, let the bugs gather at the edge, then pull the lamp's plug (or let them cut the cable) and listen for the swell. Stand with your back to a dark wall for a while. Let the generator run low.
+
 ## Known bugs and rough edges (all milestones)
 - **fps on a real GPU is unmeasured.** The container has no GPU; CPU per frame is 2 ms at 500 bugs, but please run `?bench` and read the FPS line.
 - Online play (PeerJS) and proximity voice are written but untested (no WebRTC or mic here). Same-machine tabs are tested.

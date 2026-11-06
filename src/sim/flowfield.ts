@@ -9,6 +9,8 @@
 // `node` should take toward the cheapest goal. Bugs never path themselves; they read this.
 
 export const OPEN = 0, SOLID = 1, ROCK = 2;
+/** light at or above this on a wall face forbids breaking out there (LIGHT.darkThreshold) */
+export const BREACH_LIGHT = 0.04;
 
 export interface FieldParams {
   allowDig: boolean;
@@ -104,7 +106,13 @@ export function nodeCost(inp: FieldInput, node: number): number {
       const l = inp.light[node];
       return p.openCost + (l > p.lightFloor ? (l - p.lightFloor) * p.lightCost : 0);
     }
-    if (c === SOLID) return p.allowDig ? p.digCost : Infinity;
+    if (c === SOLID) {
+      if (!p.allowDig) return Infinity;
+      // the field agrees with the breach rule: a face with light on it can't be broken out of, so
+      // routes go round to a dark face instead of queueing at a lit one
+      const l = inp.light[node];
+      return p.digCost + (l >= BREACH_LIGHT ? 800 : 0);
+    }
     return Infinity;
   }
   const i = node - n;

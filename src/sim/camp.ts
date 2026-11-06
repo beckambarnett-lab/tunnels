@@ -72,6 +72,7 @@ export interface Device {
   motionActive: number; // seconds left on (motion lamp)
   light: LightSource | null;
   hp: number; // fixtures can be attacked from the dark (siege, generator sabotage)
+  sputterUntil?: number; // generator coughing: power drops out until then
   broken: boolean;
 }
 export interface WirePoint {
@@ -237,7 +238,7 @@ export class Camp {
     }
     this.devices.splice(this.devices.indexOf(dev), 1);
     this.version++;
-    this.w.events.emit('devicePacked', { id: dev.id, kind: dev.kind });
+    this.w.events.emit('devicePacked', { id: dev.id, kind: dev.kind, x: dev.x, z: dev.z });
     return true;
   }
 
@@ -483,7 +484,7 @@ export class Camp {
     const q: Device[] = [];
     if (!this.w.fuel.out)
       for (const d of this.devices)
-        if (d.kind === 'generator' && d.running && !d.broken) {
+        if (d.kind === 'generator' && d.running && !d.broken && !(this.w.time < (d.sputterUntil ?? 0))) {
           d.powered = true;
           q.push(d);
         }
@@ -519,7 +520,17 @@ export class Camp {
     for (const d of this.devices) {
       if (d.kind === 'generator') {
         if (d.running) w.fuel.drain(FUEL.generatorPerMin * perMin, 'generator', w.time);
-        if (d.light) d.light.on = d.running && !w.fuel.out;
+        // the sputter is dread (GDD): a damaged or nearly dry generator coughs, and every light on it
+        // flickers (each flicker an opening the hive can use)
+        const sick = d.running && !d.broken && (d.hp < 0.6 || w.fuel.value < 120);
+        if (sick && !(w.time < (d.sputterUntil ?? 0))) {
+          const rate = d.hp < 0.35 || w.fuel.value < 50 ? 1.1 : 0.45; // coughs per second
+          if (w.rng.next() < rate * dt) {
+            d.sputterUntil = w.time + 0.15 + w.rng.next() * 0.35;
+            w.events.emit('sputter', { id: d.id, x: d.x, z: d.z });
+          }
+        }
+        if (d.light) d.light.on = d.running && !w.fuel.out && !(w.time < (d.sputterUntil ?? 0));
         continue;
       }
       if (!d.light) continue;

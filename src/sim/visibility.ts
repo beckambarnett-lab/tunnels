@@ -25,10 +25,12 @@ export class Visibility {
     const half = ((VIS.fovDeg / 2) * Math.PI) / 180;
     for (const v of viewers) {
       const cx = v.x / CELL, cz = v.z / CELL;
-      // felt radius
+      // felt radius: what's around you and in front of you (not behind: your back is the opening)
+      const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
       for (let dz = -Math.ceil(near); dz <= Math.ceil(near); dz++)
         for (let dx = -Math.ceil(near); dx <= Math.ceil(near); dx++) {
           if (dx * dx + dz * dz > near * near) continue;
+          if ((dx || dz) && dx * fx + dz * fz < -0.35 * Math.hypot(dx, dz)) continue;
           const x = Math.floor(cx) + dx, z = Math.floor(cz) + dz;
           if (g.inBounds(x, z)) this.mark(z * g.w + x);
         }

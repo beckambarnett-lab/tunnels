@@ -161,14 +161,15 @@ export const DIRECTOR = {
   sustainMin: 3, // GDD: 3-5 s
   sustainMax: 5,
   decayPerSec: 0.06,
-  // slow curve per act (GDD): relax seconds, peak ceiling (budget 0..1, max tendril size)
+  // slow curve per act (GDD): relax seconds, peak ceiling (budget 0..1, max tendril size), and how
+  // many seconds of Build Up it takes for tension without contact to climb to a peak (ramp)
   acts: {
-    1: { relax: 90, budget: 0.25, maxTendril: 40 },
-    2: { relax: 75, budget: 0.5, maxTendril: 80 },
-    3: { relax: 30, budget: 0.8, maxTendril: 150 },
-    4: { relax: 15, budget: 1.0, maxTendril: 200 },
-    5: { relax: 0, budget: 1.0, maxTendril: 200 },
-  } as Record<number, { relax: number; budget: number; maxTendril: number }>,
+    1: { relax: 90, budget: 0.25, maxTendril: 40, ramp: 150 },
+    2: { relax: 75, budget: 0.5, maxTendril: 80, ramp: 120 },
+    3: { relax: 30, budget: 0.8, maxTendril: 150, ramp: 80 },
+    4: { relax: 15, budget: 1.0, maxTendril: 200, ramp: 45 },
+    5: { relax: 0, budget: 1.0, maxTendril: 200, ramp: 30 },
+  } as Record<number, { relax: number; budget: number; maxTendril: number; ramp: number }>,
 };
 
 // Death, the hive and respawn (M4)

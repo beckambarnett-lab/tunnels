@@ -69,3 +69,18 @@ GDD: "Resisting is hard … Giving in and betraying your friends is always the e
 GDD: at the end of act 1 the hive chews through the mains and the house goes dark; later "the base: a power cable run down from the house is its lifeline and its light, and the hive targets it".
 **Reading:** the house's mains are dead, so the lifeline is the team's own generator: carry it down (or leave it in the house and run cable down through the basement). Either way the cable is what the hive's Sabotage goes for. There is no separate mains object.
 
+
+## Q19. What counts as an "attack opening", and how the hive knows about one.
+GDD: the hive attacks through openings ("a light flickers or dies, a wire is cut, someone wanders alone, someone stands against an unlit wall") and has no omniscience.
+**Reading:** openings are events the hive *senses*, not facts it reads off the map. Every 0.2 s the light grid near each player is compared with the last one; a patch of 6+ cells that went dark is an opening, named by its cause (a cut cable, a broken or packed device, a generator off or sputtering, a flamethrower that stopped after a long burst). Player openings are: alone (12 m from everyone, multiplayer only), out of light, and back to a dark wall. An opening only counts once a bug is within the queen's sense range of it. When one is sensed, the nearest permitted tendrils strike, staggered by distance (arrival is a wave, not a teleport), sized to the director's budget; the strike holds 1.6 s after the opening closes and then the tendril goes back to its plan. Outside Build Up / Sustain Peak, and during the assault silence, the hive notes openings but doesn't take them.
+
+## Q20. "Standing against an unlit wall" when the grid has no shadows.
+The light grid has no body shadows, so a player's own lamp lit the wall behind them and the wall could never count as dark.
+**Reading:** a wall face counts as unlit when the light reaching it, with the player's body blocking (0.32 m radius) and their own flashlight left out, is below twice the dark threshold. Those faces are marked dark for the breach rule while the player stands there. Also, the 1-cell "felt" radius that counted as seen now only covers cells in front of the player: you can't see the wall at your back.
+
+## Q21. Flank and Undermine as intents vs. strikes.
+**Reading:** Flank and Undermine now only position: flank tendrils dig pockets in the earth 3–7 m behind the target's back (dark faces only); undermine tendrils wait under the floor. They take an opening when one appears (a flank prefers an unlit wall; undermine anything but "alone"). Openings that hurt someone are remembered and push the queen toward the intent that exploits that kind of opening.
+
+## Q22. The director's tension when nothing gets through.
+Bugs massing close used to drive intensity to a peak before any attack.
+**Reading:** ambient tension (dark, bugs nearby, fuel being spent) can raise intensity only to a ceiling that starts at 0.55 and rises to 0.9 over the act's ramp (150 s of Build Up in act 1, 120 / 80 / 45 / 30 s in acts 2–5, following the slow curve); actual contact only counts from bugs that are striking. Peaks come from openings being taken.

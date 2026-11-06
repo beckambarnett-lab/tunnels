@@ -157,6 +157,44 @@ export class Synth {
     this.thump(x, y, z, 70, 0.6);
   }
 
+  /**
+   * The hive taking an opening: the chitter swells and rises toward a shriek from where the wave is
+   * coming, a beat before it arrives. Distinct from the tells (those are the plan; this is the move).
+   */
+  surge(x: number, z: number, size: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const dur = 0.55 + Math.min(0.5, size / 300);
+    const gain = 0.35 + Math.min(0.5, size / 200);
+    const s = ctx.createBufferSource();
+    s.buffer = this.noise;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 4;
+    f.frequency.setValueAtTime(700, t);
+    f.frequency.exponentialRampToValueAtTime(3800, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + dur * 0.85);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.12);
+    s.connect(f).connect(g).connect(this.positioned(x, 0.6, z, 2));
+    s.start(t, Math.random() * 1.5, dur + 0.2);
+    // the clicking of hundreds of legs, speeding up
+    for (let k = 0; k < 7; k++) {
+      const at = dur * (1 - Math.pow(0.72, k + 1));
+      setTimeout(() => this.noiseBurst(x + (Math.random() - 0.5), 0.2, z + (Math.random() - 0.5), 0.04, 5200, 6, gain * 0.5), at * 1000);
+    }
+  }
+
+  /** A sick generator coughing: the engine catches, misses, catches. */
+  cough(x: number, z: number) {
+    if (!this.ctx) return;
+    this.thump(x, 0.5, z, 34, 0.55);
+    this.noiseBurst(x, 0.5, z, 0.18, 260, 1.2, 0.45);
+    setTimeout(() => this.thump(x, 0.5, z, 30, 0.35), 140);
+  }
+
   thump(x: number, y: number, z: number, f0: number, gain: number) {
     if (!this.ctx) return;
     const ctx = this.ctx;

@@ -45,6 +45,10 @@ describe('natural play', () => {
       intents[e.intent] = (intents[e.intent] || 0) + 1;
       firstAt[e.intent] ??= Math.round(w.time);
     });
+    const opened: Record<string, number> = {};
+    let strikes = 0;
+    w.events.on('openingFound', (e) => (opened[e.kind] = (opened[e.kind] || 0) + 1));
+    w.events.on('strike', () => strikes++);
     const states: string[] = [];
     w.events.on('directorState', (e) => states.push(e.state));
     // cable from the generator into the dark, and to the lamp
@@ -99,6 +103,7 @@ describe('natural play', () => {
     console.log('belief:', JSON.stringify(w.light.belief), 'fuel left:', Math.round(w.fuel.value));
     const missing = INTENTS.filter((i) => !intents[i]);
     console.log('never chosen:', missing.join(', ') || 'none');
+    console.log('openings found:', JSON.stringify(opened), 'strikes:', strikes);
     console.log(dbg.slice(0, 12).join('\n'));
     // conceal is the act-1 behaviour (GDD: the hive "conceals itself; acts almost like normal bugs")
     expect(missing.filter((m) => m !== 'conceal').length).toBeLessThanOrEqual(1);

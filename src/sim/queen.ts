@@ -5,6 +5,7 @@ import { Influence } from './influence';
 import type { World, SimPlayer } from './world';
 import type { Device } from './camp';
 import { HIVE_INTENT } from './death';
+import { Openings, Opening } from './openings';
 
 export const INTENTS = ['conceal', 'probe', 'sabotage', 'flank', 'undermine', 'reroute', 'siege', 'bait', 'assault', 'retreat'] as const;
 export type Intent = (typeof INTENTS)[number];
@@ -39,6 +40,10 @@ export class Queen {
   lastChosenAt: Record<string, number> = {};
   forced: Intent | null = null;
   influence: Influence;
+  openings: Openings;
+  /** what worked: openings of each kind that hurt someone (feeds her intent choices) */
+  openingWins: Record<string, number> = {};
+  private respondT = 0;
   silenceUntil = 0; // assault tell
   log: string[] = [];
   phase: string = 'conceal'; // overlay compatibility
@@ -49,6 +54,14 @@ export class Queen {
 
   constructor(public w: World) {
     this.influence = new Influence(w);
+    this.openings = new Openings(w);
+    w.events.on('openingClosed', (e) => {
+      if (e.harm > 0.08) {
+        this.openingWins[e.kind] = (this.openingWins[e.kind] || 0) + 1;
+        const i = this.influence.idx(e.x, e.z);
+        if (i >= 0) this.influence.memory[i] = Math.min(5, this.influence.memory[i] + 1 + e.harm * 2);
+      }
+    });
     w.events.on('bugDeath', (e) => {
       if (e.cause === 'fire') this.burnDeaths.push(w.time);
     });
@@ -97,7 +110,10 @@ export class Queen {
   score(): Record<Intent, number> {
     const w = this.w, L = w.learning, D = w.director;
     const players = w.players.filter((p) => p.alive && !p.downed);
-    const opening = players.some((p) => this.opening(p));
+    // an opening now, or the camp has cracked recently (the hive saw it and is ready to go all-in)
+    const recentCracks = this.openings.history.filter((o) => o.sensed && w.time - o.closedAt < 15).length;
+    const opening = this.openings.active().length > 0 || recentCracks > 0;
+    const won = (k: string) => Math.min(3, this.openingWins[k] || 0);
     const lit = this.litDevices().length;
     const camp = w.camp.devices.some((d) => d.kind === 'generator');
     const darkWire = (w.camp.darkestWirePoint()?.l ?? 1) < LIGHT.darkThreshold * 3;
@@ -108,13 +124,18 @@ export class Queen {
     const s: Record<Intent, number> = {
       conceal: D.act <= 1 ? 3 : b < 0.3 ? 1.2 : 0.4,
       probe: 0.9 + (lit ? 0.3 : 0) + (L.has('testLight') ? 0.4 : 0) + (L.has('triggerMotion') && w.camp.devices.some((d) => d.kind === 'motion') ? 0.5 : 0) - (L.has('darkRush') ? 0.8 : 0),
-      sabotage: L.has('sabotage') && darkWire ? 2.0 + mem('sabotage') : L.has('sabotageGenerator') && camp ? 1.5 : 0,
-      flank: L.has('flank') || L.has('breach') ? 1.7 + (camp ? 0.3 : 0) + mem('flank') : 0,
-      undermine: camp ? 1.5 + mem('undermine') : 0.6,
+      // cutting light worked before? she leans on it (openings she can make herself)
+      sabotage: L.has('sabotage') && darkWire ? 2.0 + mem('sabotage') + 0.25 * (won('wireCut') + won('lightDied') * 0.5) : L.has('sabotageGenerator') && camp ? 1.5 : 0,
+      flank: L.has('flank') || L.has('breach') ? 1.7 + (camp ? 0.3 : 0) + mem('flank') + 0.25 * won('unlitWall') : 0,
+      undermine: camp ? 1.5 + mem('undermine') + 0.15 * won('flicker') : 0.6,
       reroute: 1.3 + (players.length ? 0.2 : 0),
-      siege: lit ? 1.5 + mem('siege') : 0,
-      bait: L.has('bait') && flameRecent ? 1.8 : 0,
-      assault: opening && b >= 0.5 && (D.state === 'Build Up' || D.state === 'Sustain Peak') ? 1.0 + D.team * 0.8 + (L.has('darkRush') ? 1.5 : 0) : 0,
+      siege: lit ? 1.5 + mem('siege') + 0.15 * won('lightDied') : 0,
+      bait: L.has('bait') && flameRecent ? 1.8 + 0.25 * won('fireStopped') : 0,
+      // all-in through an opening: the queen's answer to a cracked camp
+      assault:
+        opening && b >= 0.5 && (D.state === 'Build Up' || D.state === 'Sustain Peak')
+          ? (this.openings.active().length ? 2.0 + this.openings.active()[0].strength : 1.5) + D.team * 0.4 + (L.has('darkRush') ? 1.5 : 0)
+          : 0,
       retreat: D.state === 'Relax' ? 10 : burns > 60 ? 4 : 0,
     };
     this.raw = { ...s };
@@ -131,6 +152,12 @@ export class Queen {
   update(dt: number) {
     const w = this.w;
     this.influence.update(dt);
+    this.openings.update(dt);
+    this.respondT -= dt;
+    if (this.respondT <= 0) {
+      this.respondT = 0.2;
+      this.respond();
+    }
     this.burnDeaths = this.burnDeaths.filter((t) => w.time - t < 5);
     for (const t of w.tendrils.values()) this.refreshGoal(t);
     this.stepIntentEffects(dt);
@@ -337,6 +364,11 @@ export class Queen {
       const target = players.length ? players[k % players.length] : null;
       t.targetId = target?.id;
       this.configure(t, r.intent, silent);
+      if (r.intent === 'assault') {
+        const op = this.openings.active()[0];
+        if (op) t.targetId = op.targetId; // all-in, through the best opening
+      }
+      if (t.strike) this.applyStrike(t);
       t.breakRitual = null;
       t.carryTarget = null;
       if (downed && !carrier && (r.intent === 'surround' || r.intent === 'hide' || k === list.length - 1)) {
@@ -377,6 +409,151 @@ export class Queen {
     for (const t of list) t.members = count.get(t.id) || 0;
   }
 
+  /**
+   * Where a flank tendril waits: interior earth 2 cells behind a wall face, 3-7 m from the target,
+   * behind a dark face, scored toward the player's back and sides (and the wall they keep their
+   * back to, once the hive has learned to breach it). Re-chosen every few seconds, not every frame,
+   * so the field stays put while they dig in.
+   */
+  private flankPocket(t: Tendril, p: SimPlayer): { x: number; z: number; cells: number[] } | null {
+    const w = this.w, g = w.grid, inf = this.influence;
+    const cache = (t as any)._pocket as { at: number; px: number; pz: number; x: number; z: number; cells: number[] } | undefined;
+    if (cache && w.time - cache.at < 4 && Math.hypot(cache.px - p.x, cache.pz - p.z) < 2.5) return cache;
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let best: { c: number; s: number } | null = null;
+    const cells: { c: number; s: number }[] = [];
+    for (let k = 0; k < 240; k++) {
+      const a = (k / 240) * Math.PI * 2, r = 3 + (k % 5);
+      const x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r;
+      const c = g.cellAt(x, z);
+      if (c < 0 || g.cells[c] !== 1) continue;
+      const cx = c % g.w, cy = (c / g.w) | 0;
+      // two deep: the next cell toward the open space is earth, the one after is tunnel
+      let face = -1;
+      for (const [dx, dy] of dirs) {
+        if (g.get(cx + dx, cy + dy) === 1 && g.get(cx + 2 * dx, cy + 2 * dy) === 0) face = g.idx(cx + dx, cy + dy);
+      }
+      if (face < 0) continue;
+      const dark = w.light.surfaceRaw(face);
+      if (dark > 0.25) continue;
+      const toX = x - p.x, toZ = z - p.z, d = Math.hypot(toX, toZ) || 1;
+      const behind = -(toX * fx + toZ * fz) / d; // 1 = right behind them
+      let sc = -dark * 6 + behind * 1.2 - Math.abs(d - 4.5) * 0.3 - inf.at(inf.danger, x, z) * 2;
+      if (w.learning.has('breach') && w.learning.lastWall) sc -= Math.hypot(x - w.learning.lastWall.x, z - w.learning.lastWall.z) * 0.3;
+      cells.push({ c, s: sc });
+      if (!best || sc > best.s) best = { c, s: sc };
+    }
+    if (!best) return null;
+    // a small pocket: the best cell and its near neighbours among the candidates
+    const bx = g.centerX(best.c), bz = g.centerZ(best.c);
+    const pocket = cells.filter((q) => Math.hypot(g.centerX(q.c) - bx, g.centerZ(q.c) - bz) < 1.6).map((q) => q.c);
+    const res = { at: w.time, px: p.x, pz: p.z, x: bx, z: bz, cells: pocket };
+    (t as any)._pocket = res;
+    return res;
+  }
+
+  /** Which tendrils may strike through an opening: the queen's intent allows it (GDD). */
+  private permits(t: Tendril, op: Opening) {
+    if (t.carryTarget || t.breakRitual || t.intent === HIVE_INTENT) return false;
+    switch (t.intent) {
+      case 'surround': // the ring around the bubble
+      case 'assault':
+        return true;
+      case 'flank': // massed in the walls beside the camp
+        return true;
+      case 'undermine': // waiting under the floor
+        return op.kind !== 'alone';
+      case 'siege':
+      case 'sabotage': // they made the dark: now they use it
+        return op.kind === 'lightDied' || op.kind === 'wireCut' || op.kind === 'flicker';
+      default: // conceal, probe (scouts report, don't strike), bait, reroute, retreat, hide
+        return false;
+    }
+  }
+
+  /** Put a responding tendril into its strike (once its turn in the wave comes). */
+  private applyStrike(t: Tendril) {
+    const s = t.strike!;
+    if (this.w.time < s.at) return;
+    if (t.mode !== 'strike') t.modeSince = this.w.time;
+    t.mode = 'strike';
+    t.holdDist = 0;
+    t.braveness = Math.max(t.braveness, 1.35);
+    t.speedMul = this.w.time - s.at < 2 ? 1.25 : 1.05; // the pounce, then the press
+    t.attackDevice = null;
+    if (s.kind === 'unlitWall') t.params = defaultParams({ digCost: 3 }); // straight through the wall at their back
+  }
+
+  /**
+   * The strike rule (GDD): a tendril strikes only when the queen's intent allows it *and* an
+   * opening exists. Runs 5x a second (flickers are short). Responders are the permitted tendrils
+   * nearest the opening, sized by the director's budget and the opening's strength, released in a
+   * wave (nearest first). When the opening closes they press on briefly, then fall back to the edge.
+   */
+  private respond() {
+    const w = this.w, D = w.director, sw = w.swarm;
+    const silent = w.time < this.silenceUntil;
+    const tendrils = [...w.tendrils.values()].filter((t) => t.intent !== HIVE_INTENT);
+    // tendril centres (where their bugs actually are)
+    const cen = new Map<number, { x: number; z: number; n: number }>();
+    for (let j = 0; j < sw.count; j++) {
+      if (!sw.alive[j]) continue;
+      const c = cen.get(sw.tendril[j]) ?? { x: 0, z: 0, n: 0 };
+      c.x += sw.x[j];
+      c.z += sw.z[j];
+      c.n++;
+      cen.set(sw.tendril[j], c);
+    }
+    const open = new Map(this.openings.active().map((o) => [o.id, o]));
+    // keep strikes alive while their opening is open; release them once it has been shut a moment
+    for (const t of tendrils) {
+      if (!t.strike) continue;
+      const op = open.get(t.strike.openingId);
+      if (op) t.strike.until = w.time + 1.6;
+      else if (w.time > t.strike.until) {
+        t.strike = null;
+        this.configure(t, t.intent, silent);
+        this.refreshGoal(t);
+        continue;
+      }
+      this.applyStrike(t);
+      this.refreshGoal(t);
+    }
+    // new responders: only when the director lets the hive push (and never during the assault's hush)
+    const pushing = (D.state === 'Build Up' || D.state === 'Sustain Peak') && D.budget > 0 && !silent;
+    if (!pushing) return;
+    const N = sw.active;
+    for (const op of [...open.values()].slice(0, 3)) {
+      const want = Math.round(N * D.budget * op.strength * 0.5);
+      let have = 0;
+      for (const t of tendrils) if (t.strike?.openingId === op.id) have += t.members;
+      if (have >= want) continue;
+      const cands = tendrils
+        .filter((t) => !t.strike && this.permits(t, op) && t.members > 0)
+        .map((t) => {
+          const c = cen.get(t.id);
+          return { t, d: c ? Math.hypot(c.x / c.n - op.x, c.z / c.n - op.z) : 1e9 };
+        })
+        .sort((a, b) => a.d - b.d);
+      let first = have === 0;
+      for (const { t, d } of cands) {
+        if (have >= want) break;
+        // nearest go first: a wave, not a teleport (and the first ones are already on their way)
+        t.strike = { openingId: op.id, kind: op.kind, targetId: op.targetId, at: w.time + 0.15 + d / 25, until: w.time + 1e9 };
+        have += t.members;
+        op.responders += t.members;
+        if (first) {
+          first = false;
+          this.note(`opening: ${op.kind} (${op.reason}), strength ${op.strength.toFixed(2)} -> strike with ${t.members}+ bugs`);
+          const c = cen.get(t.id);
+          // fromX/fromZ: where the first wave is coming from (the swell is heard from there)
+          w.events.emit('strike', { kind: op.kind, x: op.x, z: op.z, fromX: c ? c.x / c.n : op.x, fromZ: c ? c.z / c.n : op.z, target: op.targetId, bugs: t.members });
+        }
+      }
+    }
+  }
+
   /** Turn an intent into tendril mode + field parameters + steering modifiers. */
   private configure(t: Tendril, intent: string, silent: boolean) {
     const L = this.w.learning;
@@ -409,10 +586,12 @@ export class Queen {
         }
         break;
       case 'flank':
-        set(this.w.director.state === 'Sustain Peak' ? 'strike' : 'mass', { holdDist: 1.5, params: defaultParams({ digCost: 3, lightCost: 320 }) });
+        // positioning: mass inside the walls beside the camp; openings decide when they break through
+        set('mass', { holdDist: 0, params: defaultParams({ digCost: 3, lightCost: 320 }) });
         break;
       case 'undermine':
-        set('strike', { holdDist: 0, params: defaultParams({ allowDig: false, allowUnder: true, underCost: 3, burrowCost: 1.5 }) });
+        // positioning: wait beneath the generator; they erupt when the floor there goes dark
+        set('mass', { holdDist: 0, params: defaultParams({ allowDig: false, allowUnder: true, underCost: 3, burrowCost: 1.5 }) });
         break;
       case 'reroute':
         set('strike', { holdDist: 0, params: defaultParams({ digCost: 2 }) });
@@ -451,6 +630,17 @@ export class Queen {
         t.gx = dp.x;
         t.gz = dp.z;
         t.goals = w.goalCellsAt(dp.x, dp.z, 1);
+        return;
+      }
+    }
+    if (t.strike && w.time >= t.strike.at) {
+      const tp = w.players.find((p) => p.id === t.strike!.targetId && p.alive && !p.downed && !p.hive);
+      if (tp) {
+        // the field (already rebuilt around the new darkness) routes them through the gap
+        t.fieldName = 'player:' + tp.id;
+        t.gx = tp.x;
+        t.gz = tp.z;
+        t.goals = w.goalCellsAt(tp.x, tp.z, 1);
         return;
       }
     }
@@ -558,28 +748,15 @@ export class Queen {
         break;
       case 'flank':
         if (p) {
-          // the darkest spot beside the team, across from where the hive comes from (influence maps)
-          const g = w.grid, inf = this.influence;
-          let best = -1, bs = -1e9;
-          for (let k = 0; k < 160; k++) {
-            const a = (k / 160) * Math.PI * 2, r = 3 + (k % 5);
-            const x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r;
-            const c = g.cellAt(x, z);
-            if (c < 0 || g.cells[c] !== 0) continue;
-            const s = -w.light.raw[c] * 5 + inf.at(inf.opportunity, x, z) - inf.at(inf.danger, x, z) * 2 + (w.learning.has('breach') && w.learning.lastWall ? -Math.hypot(x - w.learning.lastWall.x, z - w.learning.lastWall.z) * 0.3 : 0);
-            if (s > bs) (bs = s), (best = c);
-          }
-          if (best >= 0) {
-            t.fieldName = 'flank:' + p.id;
-            t.gx = g.centerX(best);
-            t.gz = g.centerZ(best);
-            t.goals = [best];
-            // once they are in the camp, they go for the player
-            if (t.mode === 'strike') {
-              t.gx = p.x;
-              t.gz = p.z;
-              t.goals = w.goalCellsAt(p.x, p.z, 1);
-            }
+          // mass inside the walls around the camp (GDD): pockets two cells deep in the earth beside
+          // the team, behind a dark face, preferring their back and sides. The face stays intact, so
+          // positioning never breaks through by itself; an opening does.
+          const pocket = this.flankPocket(t, p);
+          if (pocket) {
+            t.fieldName = 'flank:' + t.id;
+            t.gx = pocket.x;
+            t.gz = pocket.z;
+            t.goals = pocket.cells;
             return;
           }
         }

@@ -78,11 +78,26 @@ Read this and PLAN.md first when resuming. Run `npm install`, then `npm run dev`
 - A new nest layout every run: random seed unless `?seed=N`; the seed is in the debug overlay; loading a save or checkpoint rebuilds the saved seed; a fresh night clears the previous run's checkpoint.
 - Checkpoints follow the GDD list: flashlights, the intersection, the suits, the truck, and every oil rig (the extra junkyard checkpoint is gone).
 
+### Attack openings (the strike rule, rebuilt)
+The swarm now only strikes through an *opening* the hive has sensed; everywhere else it masses at the edge of the light and waits. `src/sim/openings.ts` + `Queen.respond()`.
+- Openings are events, found the way a hive would find them: the light grid near each player is diffed every 0.2 s; a 6+ cell patch that went dark is a hole, named by its cause (`wireCut`, `lightDied` for a broken/packed device or generator off, `flicker` for a generator cough, `fireStopped` after a 0.8 s+ flamethrower burst). Per player: `alone` (multiplayer), `outOfLight`, `unlitWall` (a dark solid face at your back or side, measured with your body as a shadow and your own flashlight left out).
+- No omniscience: an opening only counts once a bug is within the queen's sense range.
+- Response: 5 Hz; permitted tendrils (by intent and opening kind) nearest first, staggered by distance (a wave), sized by bugs × director budget × opening strength. Only in Build Up / Sustain Peak, never in the assault's hush. Strikes hold 1.6 s after the opening closes, then the tendril falls back to its plan.
+- Flank now digs pockets in the earth 3–7 m behind the target's back (dark faces only) and waits; Undermine waits under the floor. Both pounce when an opening appears.
+- The flow field agrees with the breach rule (lit wall faces cost +800, faces carry the light of all 8 neighbours), so tendrils route to dark faces instead of queuing at lit ones. Wall faces in a player's body shadow count as dark.
+- The generator sputters when damaged (hp < 0.6) or low on fuel (< 120): its lights cut out for 0.15–0.5 s, 0.45–1.1 times a second. Each cough is a flicker opening.
+- Openings that hurt someone are remembered (queen memory + intent bias toward the intent that exploits that kind).
+- The director's ambient tension is capped (0.55, rising to 0.9 over the act's ramp: 150 s of Build Up in act 1 down to 30 s in act 5) and contact only counts from striking bugs, so peaks come from openings being taken.
+- Sound: a rising chitter swell from where the wave comes (`Synth.surge`) as a strike starts; the generator coughs (`Synth.cough`). Both relayed to clients.
+- The felt (1-cell) "seen" radius now only covers cells in front of the player.
+
+Measured (`tests/openings.test.ts`): no opening → 300 bugs within 9 m, 0 touching, 0 strikes. Lamp dies → found and struck in 0.05 s, first bug touches the player 0.70 s later; relit → strikes released 2.0 s later, 0 touching after. Cut cable → named `wireCut`. Back to an unlit wall with flank tendrils massed in the earth → strike 2.3 s, 2 breaches behind the player, up to 63 bugs on them. Sick generator → 22 coughs, 24 openings. The 15-minute natural run chose 8 of 10 intents (never conceal or bait that seed) with openings found: lightDied 8, fireStopped 9, outOfLight 1, unlitWall 1.
+
 ## In progress
 - (none)
 
 ## Next (agreed order)
-1. Missing attack openings (a light flickers or dies, a wire is cut) and the generator's sputter.
+1. ~~Attack openings and the generator's sputter~~ (done).
 2. Comedy pass (cable tripping, boss radio as a character, branded jumpsuits and van, house dressing) and lore clues.
 3. Length: more segments, rigs and act content, a real truck chase.
 
@@ -102,6 +117,8 @@ How to run the browser gates without the dev server reloading them: `npx vite bu
 ## Gate results
 
 ### Final regression (all browser checks on the final build, run one after another)
+After attack openings (frozen build, one after another): gate1 PASS, gate2 PASS, gate3 PASS (director looped Build Up → Sustain Peak → Peak Fade → Relax → Build Up), night PASS, gate4 PASS (two tabs; gate4 needs ~25 min wall time here), check-console 0 errors. `npm test`: 109 passed.
+
 `scripts/gate1.mjs` PASS (bench 1.9 ms CPU/frame at 500 bugs; nest breaches all dark + unseen), `scripts/gate2.mjs` PASS, `scripts/gate3.mjs` PASS, `scripts/night.mjs` PASS, `scripts/gate4.mjs` PASS (see M4). `npm test`: 95 passed.
 
 ### Milestone 5 — full night, vertical slice (self-check; no gate was set for M5)

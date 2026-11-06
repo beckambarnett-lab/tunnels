@@ -5,7 +5,7 @@ import { Grid, OPEN } from './grid';
 import { LightMap, LightSource, makeLight } from './light';
 import { Visibility } from './visibility';
 import { FieldManager } from './fieldManager';
-import { Swarm, BURN } from './swarm';
+import { Swarm, BURN, STRIKE } from './swarm';
 import { Fire } from './fire';
 import { Tendril } from './tendril';
 import { Queen } from './queen';
@@ -30,6 +30,7 @@ export interface SimPlayer {
   downTimer: number;
   overwhelm: number;
   touching: number;
+  attacked: number; // touching bugs that are striking (what drives the director's intensity)
   firing: boolean;
   lastFired: number;
   crouch: boolean;
@@ -116,6 +117,8 @@ export class World {
   finale: Finale | null = null;
   debugBreaches = true; // debug panel switch
   voiceNoise = true; // GDD: loud talking registers on the queen's opportunity map (on by default)
+  /** wall faces in a player's body shadow: count as dark for the breach rule (set by Openings) */
+  shadowFaces = new Set<number>();
   tendrils = new Map<number, Tendril>();
   players: SimPlayer[] = [];
   staticLights: LightSource[] = [];
@@ -177,6 +180,7 @@ export class World {
       downTimer: 0,
       overwhelm: 0,
       touching: 0,
+      attacked: 0,
       firing: false,
       lastFired: -100,
       crouch: false,
@@ -288,6 +292,8 @@ export class World {
     this.balancePopulation();
     let t = now();
     this.light.rebuild(this.allLights());
+    // wall faces in a player's body shadow are dark to the hive (it can break out right there)
+    for (const c of this.shadowFaces) this.light.eff[c] = 0;
     this.timings.light = T(t);
     t = now();
     this.visTimer -= dt;
@@ -318,6 +324,7 @@ export class World {
       time: this.time,
       events: this.events,
       breachAllowed: this.breachAllowed && this.debugBreaches && this.authority,
+      shadowFaces: this.shadowFaces,
       onTouch: (i, k) => this.learning.touch(i, k),
     });
     this.timings.swarm = T(t);
@@ -364,14 +371,18 @@ export class World {
         p.overwhelm = 0;
         continue;
       }
-      let touching = 0;
+      let touching = 0, attacked = 0;
       const r = SWARM.touchDist, r2 = r * r;
       sw.hash.forEachNear(p.x, p.z, r, (j) => {
         if (!sw.alive[j] || sw.layer[j] || sw.state[j] === BURN) return;
         const dx = sw.x[j] - p.x, dz = sw.z[j] - p.z;
-        if (dx * dx + dz * dz < r2) touching++;
+        if (dx * dx + dz * dz < r2) {
+          touching++;
+          if (sw.state[j] === STRIKE) attacked++;
+        }
       });
       p.touching = touching;
+      p.attacked = attacked;
       if (touching > 0) p.overwhelm += touching * OVERWHELM.perBugPerSec * dt;
       else p.overwhelm = Math.max(0, p.overwhelm - OVERWHELM.decayPerSec * dt);
       if (p.overwhelm >= 1) {

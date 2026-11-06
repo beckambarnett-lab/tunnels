@@ -89,7 +89,12 @@ export class Director {
         if (sw.alive[j] && !sw.layer[j]) close++;
       });
       const dark = w.light.rawAt(p.x, p.z) < LIGHT.darkThreshold ? 1 : 0;
-      const rise = p.touching * 0.03 + dmg * 1.5 + dark * 0.01 + Math.min(1, close / 60) * 0.04 + Math.min(1, spentPerMin / 120) * 0.01;
+      // contact and damage drive the peak; the swarm merely being close (or the dark) can only build
+      // tension part of the way, so Build Up lasts until the hive actually gets through
+      // ...and that ceiling rises the longer the hive builds without getting through (slow escalation)
+      const cap = 0.55 + 0.35 * Math.min(1, this.state === 'Build Up' ? (w.time - this.since) / this.actCfg.ramp : 0);
+      const ambient = (dark * 0.01 + Math.min(1, close / 60) * 0.02 + Math.min(1, spentPerMin / 120) * 0.01) * Math.max(0, 1 - v / cap);
+      const rise = p.attacked * 0.03 + dmg * 1.5 + ambient;
       v += rise * dt * 10 * (p.downed ? 0 : 1);
       // decays during calm
       if (rise < 0.005) v -= DIRECTOR.decayPerSec * dt;

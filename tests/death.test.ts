@@ -137,7 +137,11 @@ describe('death, the hive and respawn', () => {
       w.camp.dropWireEnd(b);
       const fuel0 = w.fuel.value;
       let respawned = false;
-      w.events.on('respawned', () => (respawned = true));
+      let atRespawn: any = null;
+      w.events.on('respawned', () => {
+        respawned = true;
+        atRespawn = { hive: a.hive, overwhelm: a.overwhelm };
+      });
       run(w, 90, () => {
         b.overwhelm = 0;
         const tx = 50 * CELL - a.hiveX, tz = 12 * CELL - a.hiveZ, l = Math.hypot(tx, tz) || 1;
@@ -152,8 +156,9 @@ describe('death, the hive and respawn', () => {
         }
       });
       expect(respawned).toBe(true);
-      expect(a.hive).toBe(false);
-      expect(a.overwhelm).toBeGreaterThan(0.4);
+      // checked at the moment of return (after that, an undefended low-health player can fall again)
+      expect(atRespawn.hive).toBe(false);
+      expect(atRespawn.overwhelm).toBeGreaterThan(0.4);
       expect(fuel0 - w.fuel.value).toBeGreaterThanOrEqual(FUEL.respawn);
     } finally {
       restore();

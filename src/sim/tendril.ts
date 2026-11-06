@@ -28,6 +28,8 @@ export interface Tendril {
   attackDevice: number | null; // fixture this tendril attacks (siege, generator sabotage)
   breakRitual?: string | null; // hive player whose respawn ritual this tendril breaks up
   carryTarget?: string | null; // downed player this carrier group lifts
+  /** striking through an opening: when to go (nearest first), whom, and when to give up */
+  strike?: { openingId: number; kind: string; targetId: string; at: number; until: number } | null;
   targetId?: string;
   born: number;
   modeSince: number;
