@@ -71,7 +71,7 @@ export class Hud {
           : stage === 1
             ? '2. Force the body into the light (your bugs hate it: it drains your will)'
             : `3. Hold it in the light — a live cable, the lightning gun or a bug zapper must shock it solid: ${Math.round(p.ritual * 100)}%`;
-      html = `<div class="order">THE QUEEN: ${p.order || '…'}</div><div class="will"><span>WILL</span><i style="width:${(p.will * 100).toFixed(0)}%"></i></div><div>${step}</div><div class="small">WASD steers your bugs. Pushing against her orders drains your will; with no will left, they go where she wants.</div>`;
+      html = `<div class="order">THE QUEEN: ${p.order || '…'}</div><div class="will"><span>WILL</span><i style="width:${(p.will * 100).toFixed(0)}%"></i></div><div>${step}</div><div class="small">WASD steers your bugs. Pushing against her orders drains your will; with no will left, they mostly go where she wants.</div>`;
     }
     this.hiveEl!.innerHTML = html;
     this.hiveEl!.style.display = html ? 'block' : 'none';

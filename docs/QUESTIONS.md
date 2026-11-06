@@ -49,7 +49,7 @@ A solo player who is devoured is, by definition, every player in the hive; but t
 Not specified. **Reading:** it drops on the floor where they were devoured (deep in the hive), so a bold team can go and get it back.
 
 ## Q13. The hive player's "dim control over a group of bugs".
-**Reading:** you recruit up to 60 nearby bugs into your own group, and WASD (relative to where you look) steers it. The queen's order points at her current intent's goal; while you push against it your will drains, and as will falls your bugs drift toward her goal instead (with no will left, they go where she wants). Obeying refills will. Being in the light as a body also drains it.
+**Reading:** you recruit up to 60 nearby bugs into your own group, and WASD (relative to where you look) steers it. The queen's order points at her current intent's goal; while you push against it your will drains, and as will falls your bugs drift toward her goal instead (with no will left they mostly go where she wants, but you keep a quarter of the control). Obeying refills will. Being in the light as a body also drains it.
 
 ## Q14. Electrocuting the body "with the lightning gun or a live wire".
 **Reading:** a live (powered) cable with any point within 1.2 m of the body shocks it continuously; each lightning-gun hit on a body bug adds 2 s of the 10 s needed (and doesn't kill it); a powered solo bug zapper within 2 m shocks it at 6 fuel/s on top of the 150-fuel respawn cost. Fifteen or more queen-controlled bugs on the body reverse progress, and a big enough crowd breaks the body apart.

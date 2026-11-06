@@ -61,8 +61,8 @@ export class Death {
     const w = this.w, sw = w.swarm;
     // carriers: bugs on the body lift it and walk it toward the queen
     let carriers = 0;
-    sw.hash.forEachNear(p.x, p.z, 1.3, (j) => {
-      if (sw.alive[j] && !sw.layer[j] && sw.state[j] !== BURN && (sw.x[j] - p.x) ** 2 + (sw.z[j] - p.z) ** 2 < 1.69) carriers++;
+    sw.hash.forEachNear(p.x, p.z, 2, (j) => {
+      if (sw.alive[j] && !sw.layer[j] && sw.state[j] !== BURN && (sw.x[j] - p.x) ** 2 + (sw.z[j] - p.z) ** 2 < 4) carriers++;
     });
     if (carriers >= DEATH.carriers) {
       if (p.carriedT === 0) w.events.emit('carried', { id: p.id, x: p.x, z: p.z });
@@ -194,7 +194,8 @@ export class Death {
     let reach = 0;
     while (reach < 3 && w.grid.isOpenAt(p.hiveX + mx * (reach + 0.25), p.hiveZ + mz * (reach + 0.25))) reach += 0.25;
     const px = p.hiveX + mx * reach, pz = p.hiveZ + mz * reach;
-    const k = 1 - p.will; // no will left: you go where she wants
+    // as will falls your bugs drift toward her goal; you always keep a little dim control
+    const k = 0.75 * (1 - p.will);
     t.gx = px * (1 - k) + o.x * k;
     t.gz = pz * (1 - k) + o.z * k;
     if (!moving && p.will > 0.2) (t.gx = p.hiveX), (t.gz = p.hiveZ);

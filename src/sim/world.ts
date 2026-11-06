@@ -304,7 +304,8 @@ export class World {
       light: this.light,
       vis: this.vis,
       tendrils: this.tendrils,
-      players: this.players.map((p) => ({ x: p.x, z: p.z, alive: p.alive && !p.downed })),
+      // (LOD counts downed players too: their carriers need full-rate steering)
+      players: this.players.map((p) => ({ x: p.hive ? p.hiveX : p.x, z: p.hive ? p.hiveZ : p.z, alive: p.alive })),
       time: this.time,
       events: this.events,
       breachAllowed: this.breachAllowed && this.debugBreaches && this.authority,
