@@ -68,6 +68,7 @@ export interface SimPlayer {
   suit: boolean; // wearing an Enlite suit (faster, bigger flame, can dig)
   riding: boolean; // in the digging truck (finale)
   hose?: boolean; // garden hose taped on: longer, weaker flame
+  god?: boolean; // debug god mode: never overwhelmed
   digT: number;
 }
 
@@ -340,6 +341,10 @@ export class World {
       if (p.downed || p.hive) {
         p.flashlight.on = false;
         continue; // carrying, reviving and the hive are handled by Death
+      }
+      if (p.god) {
+        p.overwhelm = 0;
+        continue;
       }
       let touching = 0;
       const r = SWARM.touchDist, r2 = r * r;

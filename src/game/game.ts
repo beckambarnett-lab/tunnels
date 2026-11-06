@@ -475,7 +475,8 @@ export class Game {
       sess?.hostApplyInputs(dt);
     }
     this.synth.flame(this.world.players.some((p) => p.firing && Math.hypot(p.x - me.x, p.z - me.z) < 3));
-    if (this.panel.state.god) me.overwhelm = 0;
+    me.god = this.panel.state.god;
+    if (me.god) me.overwhelm = 0;
     if (this.input.hit('Escape') || this.input.hit('KeyP')) this.togglePause();
 
     const s0 = performance.now();
