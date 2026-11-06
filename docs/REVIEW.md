@@ -21,16 +21,16 @@ git clone tunnels.bundle tunnels
 | 4 Multiplayer and the hive | gate passed (two tabs, 10 min, hive death + respawn) | `milestone-4` |
 | 5 The full night | vertical slice: every act and beat once, dusk to sunrise, both endings | `milestone-5-slice` |
 
-95 Node tests (`npm test`), 5 browser checks (`scripts/gate1-4.mjs`, `scripts/night.mjs`). Biggest unknowns: real-GPU fps, online (WebRTC) play and voice. None could be measured in this container.
+98 Node tests (`npm test`), 5 browser checks (`scripts/gate1-4.mjs`, `scripts/night.mjs`). Biggest unknowns: real-GPU fps, online (WebRTC) play and voice. None could be measured in this container.
 
 ## How to run
 ```bash
 npm install
 npm run dev
 ```
-Open http://localhost:5173. Useful URL flags: `?seed=N` (nest layout), `?bugs=N`, `?bench` (benchmark hall), `?auto` (autopilot wander, for tests), `?res=0.5` (render scale).
+Open http://localhost:5173: the title screen starts **the full night** (solo, host or join). To play the milestone 1–4 prototype nest instead, open `?seed=1` (any seed). Other flags: `?night`, `?bugs=N`, `?bench` (benchmark hall), `?act=N`, `?auto` (autopilot wander, for tests), `?res=0.5` (render scale). See `README.md` for the full list.
 
-Checks: `npm test` (sim tests in Node), `npm run typecheck`, `node scripts/gate1.mjs` (needs the dev server running).
+Checks: `npm test` (sim tests in Node), `npm run typecheck`, browser checks in `scripts/` (see `README.md`; run them against a frozen build so code edits don't reload the page).
 
 ## Milestone 1 — Swarm prototype (tag `milestone-1`)
 
@@ -45,10 +45,10 @@ Checks: `npm test` (sim tests in Node), `npm run typecheck`, `node scripts/gate1
 - Debug tools: overlay (FPS, frame time, bug states, timings, field builds), panel (bug slider 0–3000, top-down camera, god mode, breach switch), floor overlays for the flow field (surface and under layer), light cost, and the breach visibility mask.
 
 ### Playtest this
-1. `npm run dev`, open the page, click to lock the mouse.
+1. `npm run dev`, open http://localhost:5173/?seed=1 (the prototype nest), click to lock the mouse.
 2. Walk the tunnels (WASD, Shift sprint, Ctrl or C crouch). F toggles the flashlight.
 3. Listen: chittering rises as bugs gather; scratching inside walls; a crack/thump on a breach.
-4. Stand still with the flashlight on. The swarm should ring you in the dark just outside the light and behind you, then strike your back every ~20 s (M1's fixed rhythm). Hold LMB to burn; watch fire spread through a packed group.
+4. Stand still with the flashlight on. The swarm should ring you in the dark just outside the light and behind you, then strike your back when the queen sees an opening (since M3 the director and queen decide when). Hold LMB with the flamethrower (slot 2) to burn; watch fire spread through a packed group.
 5. Press **T** (top-down) and **V** (cycle views): `flow` shows the field (white = digging step, purple = dive), `light` shows light cost, `seen` shows what you can see (breaches are forbidden in blue).
 6. Stare at a wall where you hear scratching: it should crack but not open. Turn your back on it in the dark and it should break open.
 7. Open `?bench` on a real GPU and read the FPS in the overlay (that's the number I couldn't measure).
@@ -57,7 +57,7 @@ Checks: `npm test` (sim tests in Node), `npm run typecheck`, `node scripts/gate1
 See `docs/QUESTIONS.md`. Short version: floors/ceilings are a second "under" layer in the flow field (Q1); headless fps is replaced by CPU time per frame as the gate stand-in (Q3); network bug sync will be local sim + host keyframes (Q2, for M4).
 
 ### Deviations
-- Downed players respawn at the start after 3 s. Carrying toward the queen is in M4's plan.
+- (Superseded in M4) M1 respawned downed players after 3 s; they are now carried to the queen.
 - Massing tendrils hold 3.5 m out from the player, not only at the light's edge: behind a flashlight there is no light edge, so without a stand-off distance they'd walk straight up to your back. The GDD's "mass at the edge of the light … and wait" is kept where there is light.
 
 ### Known bugs
@@ -75,7 +75,7 @@ See `docs/QUESTIONS.md`. Short version: floors/ceilings are a second "under" lay
 - Tab war map: explored tunnels, light, live/dead/cut cables, devices, you.
 
 ### Playtest this
-1. Start: you hold a flashlight (1), flamethrower (2) and a spool (3). The camp kit lies on the floor ahead.
+1. Open `?seed=1` (the prototype nest). You hold a flashlight (1), flamethrower (2) and a spool (3); the camp kit lies on the floor ahead. (In the full night you start with the act-1 kit instead.)
 2. Drop your three items (Q on each), walk to the generator, press E to lift it, walk a few metres, RMB to set it down (it starts; E toggles it).
 3. Pick up your gear again, pick up a lamp, RMB to place it 8–10 m away.
 4. Select the spool (3), E on the generator, walk to the lamp (watch the cable pay out), E on the lamp: it lights up.
@@ -101,7 +101,7 @@ Q5–Q9 in `docs/QUESTIONS.md`: port counts (generator 2 outputs), only the held
 - **Lightning gun** (in the test kit), device damage and repair.
 
 ### Playtest this
-1. Open `?act=3` for a harder night (default is act 2). Watch the overlay's `director` and `queen intent` lines and the `last tell` line while you play. Try to call the queen's plan from the sounds before reading the overlay; that's the real gate for this milestone.
+1. Open `?seed=1&act=3` for a harder prototype nest (default act 2; the full night sets the act itself). Watch the overlay's `director` and `queen intent` lines and the `last tell` line while you play. Try to call the queen's plan from the sounds before reading the overlay; that's the real gate for this milestone.
 2. Use the panel's **force intent** dropdown to hear and see each intent in turn:
    - *siege*: light a lamp (generator + cable). A ring grows at its edge and gets bolder until they rush and break it (hold R to fix).
    - *assault*: the chitter and drone cut out for 3 s, then music starts and everything comes at you.
