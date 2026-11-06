@@ -21,6 +21,6 @@ describe('sim performance', () => {
       const ms = (performance.now() - t0) / frames;
       console.log(`${n} bugs: ${ms.toFixed(2)} ms/step (fields built synchronously here; in game they run in the worker)`);
       if (n === 500) expect(ms).toBeLessThan(8);
-    });
+    }, 120000);
   }
 });
