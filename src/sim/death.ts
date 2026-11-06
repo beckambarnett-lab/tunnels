@@ -205,7 +205,7 @@ export class Death {
         if (reach >= 2.5 && da === 0) break;
       }
     // as will falls your bugs drift toward her goal; you always keep a little dim control
-    const k = 0.75 * (1 - p.will);
+    const k = w.time - (p.shockedAt ?? -100) < 0.5 ? 0 : 0.75 * (1 - p.will);
     t.gx = px * (1 - k) + o.x * k;
     t.gz = pz * (1 - k) + o.z * k;
     if (!moving && p.will > 0.2) (t.gx = p.hiveX), (t.gz = p.hiveZ);
@@ -242,11 +242,7 @@ export class Death {
         }
       if (shock) {
         p.ritual += dt / DEATH.ritualTime;
-        // the current pins the struggling mass where it stands
-        t.gx = p.hiveX;
-        t.gz = p.hiveZ;
-        t.goals = w.goalCellsAt(p.hiveX, p.hiveZ, 0);
-        p.shockedAt = w.time;
+        p.shockedAt = w.time; // while the current holds it, the queen's pull is suspended
       }
       // the queen sends a tendril to break it up
       let hostile = 0;

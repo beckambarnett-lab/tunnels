@@ -143,6 +143,13 @@ describe('death, the hive and respawn', () => {
         const tx = 50 * CELL - a.hiveX, tz = 12 * CELL - a.hiveZ, l = Math.hypot(tx, tz) || 1;
         a.hiveMove = l > 0.5 ? [tx / l, tz / l] : [0, 0];
         a.will = Math.max(a.will, 0.6); // a determined player
+        // the teammate defends the ritual: zaps the queen's bugs off the body
+        if (a.ritualStage >= 1) {
+          const sw = w.swarm, ht = w.death.hiveTendrils.get(a.id);
+          sw.hash.forEachNear(a.hiveX, a.hiveZ, 3, (j) => {
+            if (sw.alive[j] && sw.tendril[j] !== ht?.id) sw.kill(j, 'zap', w.events);
+          });
+        }
       });
       expect(respawned).toBe(true);
       expect(a.hive).toBe(false);
