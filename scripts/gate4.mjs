@@ -80,9 +80,14 @@ const death = await host.evaluate(async (cid) => {
   const c = w.camp, me = game.me;
   let gen = c.devices.find((d) => d.kind === 'generator');
   const lampF = c.floor.find((f) => f.item.kind === 'lamp');
-  me.slots = [lampF.item, null, null]; c.floor.splice(c.floor.indexOf(lampF), 1); me.sel = 0;
-  me.x = gen.x + Math.sin(me.yaw) * 2.5; me.z = gen.z + Math.cos(me.yaw) * 2.5;
-  const lamp = c.place(me);
+  c.floor.splice(c.floor.indexOf(lampF), 1);
+  let lamp = null;
+  for (let k = 0; k < 16 && !lamp; k++) {
+    me.slots = [lampF.item, null, null]; me.sel = 0;
+    me.yaw = (k / 16) * Math.PI * 2;
+    me.x = gen.x + Math.sin(me.yaw) * 1.6; me.z = gen.z + Math.cos(me.yaw) * 1.6;
+    if (w.grid.isOpenAt(me.x, me.z)) lamp = c.place(me);
+  }
   me.slots[1] = { id: 991, kind: 'spool' }; me.sel = 1; me.x = gen.x; me.z = gen.z;
   c.startWire(me, gen); me.x = lamp.x; me.z = lamp.z; await waitGame(0.3); c.connectWire(me, lamp);
   me.slots[1] = { id: 992, kind: 'spool' }; me.x = gen.x; me.z = gen.z; c.startWire(me, gen);
@@ -127,11 +132,13 @@ const clientView = await client.evaluate(async (target) => {
     return [dx / l, dz / l];
   };
   const waitGame = (secs, until) => new Promise((res) => { const s = w.time; const tick = () => (w.time - s >= secs || (until && until()) ? res(true) : setTimeout(tick, 50)); tick(); });
+  await waitGame(200, () => me.hive); // the host's devour reaches us
+  const seenHive2 = me.hive, order2 = me.order;
   const t0 = w.time;
   let maxStage = 0;
   await waitGame(400, () => { maxStage = Math.max(maxStage, me.ritualStage); return !me.hive && w.time - t0 > 1; });
   const hud = document.querySelector('.hivehud')?.textContent ?? '';
-  return { sawHiveOnClient: seenHive, order, maxStage, back: !me.hive, after: +(w.time - t0).toFixed(1), overwhelm: me.overwhelm, hud };
+  return { sawHiveOnClient: seenHive || seenHive2, order: order || order2, maxStage, back: !me.hive, after: +(w.time - t0).toFixed(1), overwhelm: me.overwhelm, hud };
 }, death.target);
 console.log('client:', JSON.stringify(clientView));
 const hostAfter = await host.evaluate((cid) => {

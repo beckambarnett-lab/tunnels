@@ -336,7 +336,10 @@ export class World {
     for (const p of this.players) {
       if (p.firing) p.lastFired = this.time;
       if (!p.alive) continue;
-      if (p.downed || p.hive) continue; // carrying, reviving and the hive are handled by Death
+      if (p.downed || p.hive) {
+        p.flashlight.on = false;
+        continue; // carrying, reviving and the hive are handled by Death
+      }
       let touching = 0;
       const r = SWARM.touchDist, r2 = r * r;
       sw.hash.forEachNear(p.x, p.z, r, (j) => {

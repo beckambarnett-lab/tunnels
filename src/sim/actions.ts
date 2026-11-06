@@ -131,6 +131,7 @@ export function applyInput(w: World, p: SimPlayer, inp: PlayerInput, dt: number)
   p.eye = inp.eye;
   if (!p.alive || p.downed || p.hive) {
     p.liftT = 0;
+    p.flashlight.on = false; // a downed player's light is on the floor, not in their hand
     return;
   }
   // slot selection
