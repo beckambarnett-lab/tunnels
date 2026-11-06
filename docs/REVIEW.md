@@ -6,6 +6,12 @@ Everything is in `/home/user/tunnels` (local git repo, tags `milestone-N`). **Th
 cd /home/user/tunnels && git remote add origin <your-repo-url> && git push -u origin main --tags
 ```
 
+A single-file copy of the whole repo (all history and tags) is also at `/tmp/claude-0/-home-user/01ccde54-0de1-55bc-aa7a-cce3dcc29450/scratchpad/tunnels.bundle` (it lives in the same temporary container, so download it). Restore it with:
+
+```bash
+git clone tunnels.bundle tunnels
+```
+
 ## At a glance
 | Milestone | State | Tag |
 | --- | --- | --- |
